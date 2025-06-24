@@ -1,0 +1,3 @@
+streamlit
+pandas
+# sqlite3 já está incluso no Python padrão 
