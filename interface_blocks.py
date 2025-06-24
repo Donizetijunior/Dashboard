@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from db_utils import insert_sales_from_csv, get_sales
-from auth_utils import load_users, save_users, authenticate
+from auth_utils import load_users, save_users, authenticate, get_user_profile
 import os
 
 def login_block():
@@ -16,10 +16,22 @@ def login_block():
         else:
             st.error("Usuário ou senha inválidos.")
 
-def admin_block():
-    st.subheader("👤 Gerenciar Usuários")
+def pagina_usuario():
+    st.title("👤 Meu Perfil")
+    usuario = st.session_state.usuario
+    perfil = get_user_profile(usuario)
+    st.markdown(f"**Usuário:** `{usuario}`")
+    st.markdown(f"**Perfil:** `{perfil}`")
+    st.info("Entre em contato com o administrador para alterar seus dados.")
+
+def pagina_admin_usuarios():
+    st.title("👤 Gerenciar Usuários")
     users = load_users()
-    st.json(users)
+    st.markdown("**Usuários cadastrados:**")
+    for user, info in users.items():
+        st.markdown(f"- **{user}** ({info['perfil']})")
+    st.divider()
+    st.subheader("Adicionar novo usuário")
     new_user = st.text_input("Novo usuário")
     new_pass = st.text_input("Senha", type="password")
     new_profile = st.selectbox("Perfil", ["admin", "comum"])
@@ -80,8 +92,14 @@ def dashboard_diario(perfil):
     st.subheader("📄 Tabela de Vendas")
     st.dataframe(df_filtrado)
 
+    # Botão para acessar a página de administração de usuários (apenas admin)
     if perfil == "admin":
-        admin_block()
+        st.divider()
+        if st.button("Ir para Gerenciar Usuários"):
+            st.session_state.pagina = "admin_usuarios"
+    else:
+        if st.button("Ver meu perfil"):
+            st.session_state.pagina = "usuario"
 
 def dashboard_total():
     st.title("Resumo Executivo")
