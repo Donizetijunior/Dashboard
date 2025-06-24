@@ -6,7 +6,11 @@ from datetime import datetime
 from pathlib import Path
 from db_utils import init_db, insert_sales_from_csv, get_sales
 from auth_utils import authenticate, get_user_profile, load_users, save_users
-from interface_blocks import login_block, pagina_admin_usuarios, pagina_usuario, dashboard_diario, dashboard_total
+from interface_blocks import (
+    login_block, pagina_admin_usuarios, pagina_usuario, dashboard_diario, dashboard_total,
+    dashboard_clientes, dashboard_produtos, dashboard_vendedores, dashboard_localizacao,
+    dashboard_temporal, dashboard_devolucoes, dashboard_pagamento, dashboard_campanhas
+)
 
 # =====================
 # Inicialização do banco de dados
@@ -38,6 +42,8 @@ if 'logado' not in st.session_state:
     st.session_state.usuario = ''
 if 'pagina' not in st.session_state:
     st.session_state.pagina = 'dashboard'
+if 'dashboard' not in st.session_state:
+    st.session_state.dashboard = 'Relatório Diário'
 
 # =====================
 # Interface Principal
@@ -52,19 +58,35 @@ else:
         st.session_state.usuario = ''
         st.session_state.pagina = 'dashboard'
         st.experimental_rerun()
-    menu = st.sidebar.selectbox("Escolha o relatório", ["Relatório Diário", "Relatório Total"])
-    if perfil == "admin":
-        menu_extra = st.sidebar.selectbox("Administração", ["Dashboard", "Gerenciar Usuários", "Meu Perfil"])
-    else:
-        menu_extra = st.sidebar.selectbox("Conta", ["Dashboard", "Meu Perfil"])
 
-    # Navegação entre páginas
-    if menu_extra == "Gerenciar Usuários" and perfil == "admin":
-        st.session_state.pagina = "admin_usuarios"
-    elif menu_extra == "Meu Perfil":
-        st.session_state.pagina = "usuario"
+    dashboards = [
+        "Relatório Diário",
+        "Relatório Total",
+        "Clientes",
+        "Produtos",
+        "Vendedores",
+        "Localização",
+        "Temporal",
+        "Devoluções",
+        "Formas de Pagamento",
+        "Campanhas"
+    ]
+    st.sidebar.markdown("### Dashboards")
+    for dash in dashboards:
+        if st.sidebar.button(dash, key=f"btn_{dash}"):
+            st.session_state.dashboard = dash
+            st.session_state.pagina = 'dashboard'
+
+    if perfil == "admin":
+        st.sidebar.markdown("### Administração")
+        if st.sidebar.button("Gerenciar Usuários", key="btn_admin_usuarios"):
+            st.session_state.pagina = "admin_usuarios"
+        if st.sidebar.button("Meu Perfil", key="btn_meu_perfil"):
+            st.session_state.pagina = "usuario"
     else:
-        st.session_state.pagina = "dashboard"
+        st.sidebar.markdown("### Conta")
+        if st.sidebar.button("Meu Perfil", key="btn_meu_perfil"):
+            st.session_state.pagina = "usuario"
 
     # Renderização das páginas
     if st.session_state.pagina == "admin_usuarios" and perfil == "admin":
@@ -72,7 +94,24 @@ else:
     elif st.session_state.pagina == "usuario":
         pagina_usuario()
     else:
-        if menu == "Relatório Diário":
+        dash = st.session_state.dashboard
+        if dash == "Relatório Diário":
             dashboard_diario(perfil)
-        elif menu == "Relatório Total":
+        elif dash == "Relatório Total":
             dashboard_total()
+        elif dash == "Clientes":
+            dashboard_clientes()
+        elif dash == "Produtos":
+            dashboard_produtos()
+        elif dash == "Vendedores":
+            dashboard_vendedores()
+        elif dash == "Localização":
+            dashboard_localizacao()
+        elif dash == "Temporal":
+            dashboard_temporal()
+        elif dash == "Devoluções":
+            dashboard_devolucoes()
+        elif dash == "Formas de Pagamento":
+            dashboard_pagamento()
+        elif dash == "Campanhas":
+            dashboard_campanhas()

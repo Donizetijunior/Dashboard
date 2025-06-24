@@ -130,4 +130,71 @@ def dashboard_total():
         with open('Relatório de Vendas - Análise Completa.pdf', 'rb') as pdf_file:
             st.download_button("Baixar Relatório Completo (PDF)", pdf_file, file_name='Relatório de Vendas - Análise Completa.pdf')
     else:
-        st.warning("Arquivo PDF não encontrado.") 
+        st.warning("Arquivo PDF não encontrado.")
+
+# ========== Dashboards Temáticos ==========
+
+def dashboard_clientes():
+    st.title("👥 Dashboard de Clientes")
+    df = get_sales()
+    if df.empty:
+        st.warning("Nenhum dado disponível.")
+        return
+    st.metric("Clientes Únicos", df['parceiro'].nunique())
+    st.metric("Novos Clientes (estimado)", df['parceiro'].value_counts().loc[lambda x: x == 1].count())
+    st.subheader("Novos Clientes por Data")
+    novos = df.groupby('data_competencia')['parceiro'].nunique()
+    st.line_chart(novos)
+    st.subheader("Top Clientes")
+    st.bar_chart(df.groupby('parceiro')['valor'].sum().sort_values(ascending=False).head(10))
+
+
+def dashboard_produtos():
+    st.title("📦 Dashboard de Produtos")
+    st.info("Este dashboard depende de dados de produtos no CSV. Adapte conforme necessário.")
+    st.warning("Colunas de produto não encontradas no banco de dados.")
+
+
+def dashboard_vendedores():
+    st.title("🧑‍💼 Dashboard de Vendedores")
+    st.info("Este dashboard depende de dados de vendedor no CSV. Adapte conforme necessário.")
+    st.warning("Colunas de vendedor não encontradas no banco de dados.")
+
+
+def dashboard_localizacao():
+    st.title("🌎 Dashboard de Localização")
+    st.info("Este dashboard depende de dados de localização no CSV. Adapte conforme necessário.")
+    st.warning("Colunas de localização não encontradas no banco de dados.")
+
+
+def dashboard_temporal():
+    st.title("📅 Dashboard Temporal")
+    df = get_sales()
+    if df.empty:
+        st.warning("Nenhum dado disponível.")
+        return
+    st.subheader("Vendas por Dia")
+    vendas_dia = df.groupby('data_competencia')['valor'].sum()
+    st.line_chart(vendas_dia)
+    st.subheader("Vendas por Mês")
+    df['mes'] = pd.to_datetime(df['data_competencia'], errors='coerce').dt.to_period('M')
+    vendas_mes = df.groupby('mes')['valor'].sum()
+    st.bar_chart(vendas_mes)
+
+
+def dashboard_devolucoes():
+    st.title("↩️ Dashboard de Devoluções/Cancelamentos")
+    st.info("Este dashboard depende de dados de devolução/cancelamento no CSV. Adapte conforme necessário.")
+    st.warning("Colunas de devolução/cancelamento não encontradas no banco de dados.")
+
+
+def dashboard_pagamento():
+    st.title("💳 Dashboard de Formas de Pagamento")
+    st.info("Este dashboard depende de dados de pagamento no CSV. Adapte conforme necessário.")
+    st.warning("Colunas de forma de pagamento não encontradas no banco de dados.")
+
+
+def dashboard_campanhas():
+    st.title("📢 Dashboard de Campanhas/Promoções")
+    st.info("Este dashboard depende de dados de campanhas no CSV. Adapte conforme necessário.")
+    st.warning("Colunas de campanha/promoção não encontradas no banco de dados.") 
