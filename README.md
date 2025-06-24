@@ -35,8 +35,8 @@ Dash/
 ## ⚙️ Instalação Local
 1. **Clone o repositório:**
    ```bash
-   git clone https://github.com/seu-usuario/seu-repo.git
-   cd seu-repo
+   git clone https://github.com/....
+   cd pasta-clonada
    ```
 2. **Crie o ambiente virtual:**
    ```bash
@@ -81,9 +81,5 @@ O CSV deve conter pelo menos as colunas:
 
 ---
 
-## 📄 Licença
-MIT
 
----
-
-> Feito com ❤️ por [Seu Nome]. 
+ 
