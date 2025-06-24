@@ -9,6 +9,11 @@ from auth_utils import authenticate, get_user_profile, load_users, save_users
 from interface_blocks import login_block, admin_block, dashboard_diario, dashboard_total
 
 # =====================
+# Inicialização do banco de dados
+# =====================
+init_db()
+
+# =====================
 # Configurações Gerais
 # =====================
 DATA_DIR = Path("data")
