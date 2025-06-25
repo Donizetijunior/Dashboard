@@ -8,8 +8,7 @@ from db_utils import init_db, insert_sales_from_csv, get_sales
 from auth_utils import authenticate, get_user_profile, load_users, save_users
 from interface_blocks import (
     login_block, pagina_admin_usuarios, pagina_usuario, dashboard_diario, dashboard_total,
-    dashboard_clientes, dashboard_produtos, dashboard_vendedores, dashboard_localizacao,
-    dashboard_temporal, dashboard_devolucoes, dashboard_pagamento, dashboard_campanhas
+    dashboard_clientes, dashboard_temporal, dashboard_devolucoes, dashboard_transportadoras, dashboard_condicao_pagamento
 )
 
 # =====================
@@ -63,13 +62,10 @@ else:
         "Relatório Diário",
         "Relatório Total",
         "Clientes",
-        "Produtos",
-        "Vendedores",
-        "Localização",
         "Temporal",
         "Devoluções",
-        "Formas de Pagamento",
-        "Campanhas"
+        "Transportadoras",
+        "Condição de Pagamento"
     ]
     st.sidebar.markdown("### Dashboards")
     for dash in dashboards:
@@ -101,17 +97,11 @@ else:
             dashboard_total()
         elif dash == "Clientes":
             dashboard_clientes()
-        elif dash == "Produtos":
-            dashboard_produtos()
-        elif dash == "Vendedores":
-            dashboard_vendedores()
-        elif dash == "Localização":
-            dashboard_localizacao()
         elif dash == "Temporal":
             dashboard_temporal()
         elif dash == "Devoluções":
             dashboard_devolucoes()
-        elif dash == "Formas de Pagamento":
-            dashboard_pagamento()
-        elif dash == "Campanhas":
-            dashboard_campanhas()
+        elif dash == "Transportadoras":
+            dashboard_transportadoras()
+        elif dash == "Condição de Pagamento":
+            dashboard_condicao_pagamento()

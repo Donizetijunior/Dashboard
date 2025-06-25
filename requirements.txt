@@ -1,3 +1,6 @@
 streamlit
 pandas
-# sqlite3 já está incluso no Python padrão 
+# sqlite3 já está incluso no Python padrão
+pdfkit
+matplotlib
+altair_saver 

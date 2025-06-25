@@ -3,6 +3,13 @@ import pandas as pd
 from db_utils import insert_sales_from_csv, get_sales
 from auth_utils import load_users, save_users, authenticate, get_user_profile
 import os
+import altair as alt
+import tempfile
+import pdfkit
+import matplotlib.pyplot as plt
+import base64
+import shutil
+from altair_saver import save as altair_save
 
 def login_block():
     st.title("🔐 Login")
@@ -43,22 +50,88 @@ def pagina_admin_usuarios():
             save_users(users)
             st.success("Usuário adicionado com sucesso!")
 
+def gerar_pdf_dashboard_diario(df_filtrado, kpis, chart_top_clientes, chart_vendas_tempo):
+    # Salva gráficos como imagens temporárias
+    tempdir = tempfile.mkdtemp()
+    img_top_clientes = os.path.join(tempdir, 'top_clientes.png')
+    img_vendas_tempo = os.path.join(tempdir, 'vendas_tempo.png')
+    altair_save(chart_top_clientes, img_top_clientes, method='selenium')
+    altair_save(chart_vendas_tempo, img_vendas_tempo, method='selenium')
+
+    # Gera HTML estilizado
+    html = f'''
+    <html>
+    <head>
+    <style>
+    body {{ font-family: Arial, sans-serif; margin: 40px; }}
+    h1 {{ text-align: center; }}
+    .kpis {{ display: flex; justify-content: space-around; margin-bottom: 30px; }}
+    .kpi {{ background: #f2f2f2; border-radius: 10px; padding: 20px; text-align: center; width: 22%; }}
+    .section {{ margin-bottom: 30px; }}
+    table {{ border-collapse: collapse; width: 100%; }}
+    th, td {{ border: 1px solid #ddd; padding: 8px; }}
+    th {{ background: #eee; }}
+    </style>
+    </head>
+    <body>
+    <h1>Relatório Diário de Vendas</h1>
+    <div class="kpis">
+        <div class="kpi"><b>Total de Vendas</b><br>{kpis['total_vendas']}</div>
+        <div class="kpi"><b>Clientes Únicos</b><br>{kpis['clientes_unicos']}</div>
+        <div class="kpi"><b>Ticket Médio</b><br>R$ {kpis['ticket_medio']:,.2f}</div>
+        <div class="kpi"><b>Total Vendido</b><br>R$ {kpis['total_vendido']:,.2f}</div>
+    </div>
+    <div class="section">
+        <h2>Top 10 Clientes</h2>
+        <img src="data:image/png;base64,{base64.b64encode(open(img_top_clientes, 'rb').read()).decode()}" width="700"/>
+    </div>
+    <div class="section">
+        <h2>Vendas ao Longo do Tempo</h2>
+        <img src="data:image/png;base64,{base64.b64encode(open(img_vendas_tempo, 'rb').read()).decode()}" width="700"/>
+    </div>
+    <div class="section">
+        <h2>Tabela de Vendas Filtradas</h2>
+        {df_filtrado.head(30).to_html(index=False)}
+        <p style="font-size:12px;color:#888;">Exibindo as 30 primeiras linhas.</p>
+    </div>
+    </body>
+    </html>
+    '''
+    # Salva HTML temporário
+    html_path = os.path.join(tempdir, 'relatorio.html')
+    with open(html_path, 'w', encoding='utf-8') as f:
+        f.write(html)
+    # Gera PDF
+    pdf_path = os.path.join(tempdir, 'relatorio.pdf')
+    pdfkit.from_file(html_path, pdf_path)
+    # Lê PDF para download
+    with open(pdf_path, 'rb') as f:
+        pdf_bytes = f.read()
+    # Limpa arquivos temporários
+    shutil.rmtree(tempdir)
+    return pdf_bytes
+
 def dashboard_diario(perfil):
-    st.title("📊 Dashboard de Vendas - Diário")
+    st.markdown("""
+    <h1 style='text-align: center; margin-bottom: 0;'>📊 Dashboard Diário de Vendas</h1>
+    <p style='text-align: center; color: #888; margin-top: 0;'>Acompanhe as vendas do dia de forma visual e interativa</p>
+    """, unsafe_allow_html=True)
+    st.divider()
+
     if perfil == "admin":
-        st.subheader("📁 Upload de novo CSV")
-        uploaded_file = st.file_uploader("Selecione um arquivo .csv", type="csv")
-        if uploaded_file:
-            df_novo = pd.read_csv(uploaded_file, sep=';', encoding='latin1')
-            insert_sales_from_csv(df_novo)
-            st.success("Arquivo carregado e dados inseridos com sucesso!")
+        with st.expander("📁 Upload de novo CSV", expanded=False):
+            uploaded_file = st.file_uploader("Selecione um arquivo .csv", type="csv")
+            if uploaded_file:
+                df_novo = pd.read_csv(uploaded_file, sep=';', encoding='latin1')
+                insert_sales_from_csv(df_novo)
+                st.success("Arquivo carregado e dados inseridos com sucesso!")
 
     df = get_sales()
     if df.empty:
         st.warning("Nenhum dado disponível. Faça upload de um CSV.")
         return
 
-    st.subheader("📅 Filtros")
+    st.markdown("<h4>📅 Filtros</h4>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     datas = pd.to_datetime(df['data_competencia'], errors='coerce')
     data_min, data_max = datas.min(), datas.max()
@@ -74,25 +147,68 @@ def dashboard_diario(perfil):
     if parceiro_sel:
         df_filtrado = df_filtrado[df_filtrado['parceiro'].isin(parceiro_sel)]
 
-    st.subheader("📌 Indicadores")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total de Vendas", f"{df_filtrado['numero_venda'].nunique()}")
-    col2.metric("Clientes Únicos", f"{df_filtrado['parceiro'].nunique()}")
+    st.divider()
+
+    # KPIs em cards
+    st.markdown("<h4 style='margin-bottom:0;'>📌 Indicadores</h4>", unsafe_allow_html=True)
+    kpi1, kpi2, kpi3 = st.columns(3)
+    kpi1.metric("Total de Vendas", f"{df_filtrado['numero_venda'].nunique()}", help="Quantidade de vendas únicas no período filtrado.")
+    kpi2.metric("Clientes Únicos", f"{df_filtrado['parceiro'].nunique()}", help="Quantidade de clientes diferentes.")
     ticket_medio = df_filtrado['valor'].sum() / max(df_filtrado['numero_venda'].nunique(), 1)
-    col3.metric("Ticket Médio", f"R$ {ticket_medio:,.2f}")
+    kpi3.metric("Ticket Médio", f"R$ {ticket_medio:,.2f}", help="Valor médio por venda.")
+    kpi4, kpi5, kpi6 = st.columns(3)
+    kpi4.metric("Total Vendido", f"R$ {df_filtrado['valor'].sum():,.2f}")
+    kpi5.metric("Total Desconto", f"R$ {df_filtrado['Desconto'].astype(str).str.replace(',', '.').astype(float).sum():,.2f}")
+    kpi6.metric("Total Acréscimo", f"R$ {df_filtrado['Acréscimo'].astype(str).str.replace(',', '.').astype(float).sum():,.2f}")
+    st.write("")
 
-    st.subheader("👥 Top Clientes")
-    top_clientes = df_filtrado.groupby('parceiro')['valor'].sum().sort_values(ascending=False).head(10)
-    st.bar_chart(top_clientes)
+    st.divider()
 
-    st.subheader("📈 Vendas ao longo do tempo")
-    vendas_tempo = df_filtrado.groupby('data_competencia')['valor'].sum()
-    st.line_chart(vendas_tempo)
+    # Gráfico: Top Clientes
+    st.markdown("<h4>👥 Top 10 Clientes</h4>", unsafe_allow_html=True)
+    top_clientes = df_filtrado.groupby('parceiro')['valor'].sum().sort_values(ascending=False).head(10).reset_index()
+    if not top_clientes.empty:
+        chart = alt.Chart(top_clientes).mark_bar().encode(
+            x=alt.X('valor:Q', title='Valor Total'),
+            y=alt.Y('parceiro:N', sort='-x', title='Cliente'),
+            color=alt.value('#4F8DFD')
+        ).properties(height=350)
+        st.altair_chart(chart, use_container_width=True)
+    else:
+        st.info("Não há dados suficientes para exibir o gráfico de Top Clientes.")
 
-    st.subheader("📄 Tabela de Vendas")
-    st.dataframe(df_filtrado)
+    st.divider()
 
-    # Botão para acessar a página de administração de usuários (apenas admin)
+    # Gráfico: Evolução temporal
+    st.markdown("<h4>📈 Vendas ao Longo do Tempo</h4>", unsafe_allow_html=True)
+    vendas_tempo = df_filtrado.groupby('data_competencia')['valor'].sum().reset_index()
+    if not vendas_tempo.empty:
+        chart2 = alt.Chart(vendas_tempo).mark_line(point=True).encode(
+            x=alt.X('data_competencia:T', title='Data'),
+            y=alt.Y('valor:Q', title='Valor Total'),
+            tooltip=['data_competencia', 'valor']
+        ).properties(height=350)
+        st.altair_chart(chart2, use_container_width=True)
+    else:
+        st.info("Não há dados suficientes para exibir o gráfico de evolução temporal.")
+
+    st.divider()
+
+    # Tabela de dados filtrados
+    st.markdown("<h4>📄 Tabela de Vendas Filtradas</h4>", unsafe_allow_html=True)
+    st.dataframe(df_filtrado, use_container_width=True, height=350)
+
+    # Botão para gerar PDF
+    if st.button("Baixar Relatório em PDF"):
+        kpis = {
+            'total_vendas': df_filtrado['numero_venda'].nunique(),
+            'clientes_unicos': df_filtrado['parceiro'].nunique(),
+            'ticket_medio': ticket_medio,
+            'total_vendido': df_filtrado['valor'].sum()
+        }
+        pdf_bytes = gerar_pdf_dashboard_diario(df_filtrado, kpis, chart, chart2)
+        st.download_button("Download do PDF", pdf_bytes, file_name="relatorio_diario.pdf", mime="application/pdf")
+
     if perfil == "admin":
         st.divider()
         if st.button("Ir para Gerenciar Usuários"):
@@ -183,18 +299,72 @@ def dashboard_temporal():
 
 
 def dashboard_devolucoes():
-    st.title("↩️ Dashboard de Devoluções/Cancelamentos")
-    st.info("Este dashboard depende de dados de devolução/cancelamento no CSV. Adapte conforme necessário.")
-    st.warning("Colunas de devolução/cancelamento não encontradas no banco de dados.")
+    st.markdown("""
+    <h1 style='text-align: center; margin-bottom: 0;'>↩️ Dashboard de Devoluções</h1>
+    <p style='text-align: center; color: #888; margin-top: 0;'>Acompanhe devoluções e cancelamentos</p>
+    """, unsafe_allow_html=True)
+    st.divider()
+    df = get_sales()
+    if df.empty:
+        st.warning("Nenhum dado disponível.")
+        return
+    # Considera devolução se quantidade negativa ou operação contém DEVOLUCAO
+    df['is_devolucao'] = (df['Quantidade'].astype(str).str.replace(',', '.').astype(float) < 0) | (df['Operação'].str.upper().str.contains('DEVOLUCAO'))
+    df_dev = df[df['is_devolucao']]
+    k1, k2 = st.columns(2)
+    k1.metric("Total de Devoluções", len(df_dev))
+    k2.metric("Valor Devolvido", f"R$ {df_dev['valor'].sum():,.2f}")
+    st.divider()
+    st.markdown("<h4>Devoluções ao Longo do Tempo</h4>", unsafe_allow_html=True)
+    devolucoes_tempo = df_dev.groupby('data_competencia')['valor'].sum().reset_index()
+    if not devolucoes_tempo.empty:
+        chart = alt.Chart(devolucoes_tempo).mark_line(point=True, color='red').encode(
+            x=alt.X('data_competencia:T', title='Data'),
+            y=alt.Y('valor:Q', title='Valor Devolvido')
+        )
+        st.altair_chart(chart, use_container_width=True)
+    st.divider()
+    st.markdown("<h4>Top Clientes que Devolvem</h4>", unsafe_allow_html=True)
+    top_dev = df_dev.groupby('parceiro')['valor'].sum().sort_values(ascending=False).head(10).reset_index()
+    st.dataframe(top_dev, use_container_width=True)
 
+# Dashboard de Transportadoras
 
-def dashboard_pagamento():
-    st.title("💳 Dashboard de Formas de Pagamento")
-    st.info("Este dashboard depende de dados de pagamento no CSV. Adapte conforme necessário.")
-    st.warning("Colunas de forma de pagamento não encontradas no banco de dados.")
+def dashboard_transportadoras():
+    st.markdown("""
+    <h1 style='text-align: center; margin-bottom: 0;'>🚚 Dashboard de Transportadoras</h1>
+    <p style='text-align: center; color: #888; margin-top: 0;'>Acompanhe o desempenho das transportadoras</p>
+    """, unsafe_allow_html=True)
+    st.divider()
+    df = get_sales()
+    if df.empty or 'Transportadora' not in df.columns:
+        st.warning("Nenhum dado disponível.")
+        return
+    top_transp = df.groupby('Transportadora')['valor'].sum().sort_values(ascending=False).head(10).reset_index()
+    st.markdown("<h4>Top Transportadoras por Valor</h4>", unsafe_allow_html=True)
+    st.bar_chart(top_transp.set_index('Transportadora'))
+    st.divider()
+    st.markdown("<h4>Quantidade de Entregas por Transportadora</h4>", unsafe_allow_html=True)
+    entregas = df['Transportadora'].value_counts().head(10)
+    st.bar_chart(entregas)
 
+# Dashboard de Condição de Pagamento
 
-def dashboard_campanhas():
-    st.title("📢 Dashboard de Campanhas/Promoções")
-    st.info("Este dashboard depende de dados de campanhas no CSV. Adapte conforme necessário.")
-    st.warning("Colunas de campanha/promoção não encontradas no banco de dados.") 
+def dashboard_condicao_pagamento():
+    st.markdown("""
+    <h1 style='text-align: center; margin-bottom: 0;'>💳 Dashboard de Condição de Pagamento</h1>
+    <p style='text-align: center; color: #888; margin-top: 0;'>Acompanhe as formas e condições de pagamento</p>
+    """, unsafe_allow_html=True)
+    st.divider()
+    df = get_sales()
+    if df.empty or 'Tipo da Condição' not in df.columns:
+        st.warning("Nenhum dado disponível.")
+        return
+    st.markdown("<h4>Distribuição por Tipo de Condição</h4>", unsafe_allow_html=True)
+    cond = df['Tipo da Condição'].value_counts().reset_index()
+    cond.columns = ['Tipo da Condição', 'Quantidade']
+    st.bar_chart(cond.set_index('Tipo da Condição'))
+    st.divider()
+    st.markdown("<h4>Ticket Médio por Condição</h4>", unsafe_allow_html=True)
+    ticket = df.groupby('Tipo da Condição')['valor'].mean().sort_values(ascending=False).reset_index()
+    st.dataframe(ticket, use_container_width=True) 
