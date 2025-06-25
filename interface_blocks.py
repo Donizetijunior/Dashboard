@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import base64
 import shutil
 from altair_saver import save as altair_save
+import unicodedata
 
 def login_block():
     st.title("🔐 Login")
@@ -111,6 +112,14 @@ def gerar_pdf_dashboard_diario(df_filtrado, kpis, chart_top_clientes, chart_vend
     shutil.rmtree(tempdir)
     return pdf_bytes
 
+def padronizar_colunas(df):
+    # Remove acentos e caracteres especiais, deixa tudo minúsculo e sem espaços
+    def clean(col):
+        col = unicodedata.normalize('NFKD', col).encode('ASCII', 'ignore').decode('ASCII')
+        return col.strip().lower().replace(' ', '_')
+    df.columns = [clean(c) for c in df.columns]
+    return df
+
 def dashboard_diario(perfil):
     st.markdown("""
     <h1 style='text-align: center; margin-bottom: 0;'>📊 Dashboard Diário de Vendas</h1>
@@ -123,6 +132,7 @@ def dashboard_diario(perfil):
             uploaded_file = st.file_uploader("Selecione um arquivo .csv", type="csv")
             if uploaded_file:
                 df_novo = pd.read_csv(uploaded_file, sep=';', encoding='latin1')
+                df_novo = padronizar_colunas(df_novo)
                 insert_sales_from_csv(df_novo)
                 st.success("Arquivo carregado e dados inseridos com sucesso!")
 
@@ -130,6 +140,7 @@ def dashboard_diario(perfil):
     if df.empty:
         st.warning("Nenhum dado disponível. Faça upload de um CSV.")
         return
+    df = padronizar_colunas(df)
 
     st.markdown("<h4>📅 Filtros</h4>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
@@ -157,9 +168,12 @@ def dashboard_diario(perfil):
     ticket_medio = df_filtrado['valor'].sum() / max(df_filtrado['numero_venda'].nunique(), 1)
     kpi3.metric("Ticket Médio", f"R$ {ticket_medio:,.2f}", help="Valor médio por venda.")
     kpi4, kpi5, kpi6 = st.columns(3)
-    kpi4.metric("Total Vendido", f"R$ {df_filtrado['valor'].sum():,.2f}")
-    kpi5.metric("Total Desconto", f"R$ {df_filtrado['Desconto'].astype(str).str.replace(',', '.').astype(float).sum():,.2f}")
-    kpi6.metric("Total Acréscimo", f"R$ {df_filtrado['Acréscimo'].astype(str).str.replace(',', '.').astype(float).sum():,.2f}")
+    total_vendido = df_filtrado['valor'].sum()
+    total_desconto = df_filtrado['desconto'].astype(str).str.replace(',', '.').astype(float).sum() if 'desconto' in df_filtrado.columns else 0
+    total_acrescimo = df_filtrado['acrescimo'].astype(str).str.replace(',', '.').astype(float).sum() if 'acrescimo' in df_filtrado.columns else 0
+    kpi4.metric("Total Vendido", f"R$ {total_vendido:,.2f}")
+    kpi5.metric("Total Desconto", f"R$ {total_desconto:,.2f}")
+    kpi6.metric("Total Acréscimo", f"R$ {total_acrescimo:,.2f}")
     st.write("")
 
     st.divider()
@@ -204,7 +218,7 @@ def dashboard_diario(perfil):
             'total_vendas': df_filtrado['numero_venda'].nunique(),
             'clientes_unicos': df_filtrado['parceiro'].nunique(),
             'ticket_medio': ticket_medio,
-            'total_vendido': df_filtrado['valor'].sum()
+            'total_vendido': total_vendido
         }
         pdf_bytes = gerar_pdf_dashboard_diario(df_filtrado, kpis, chart, chart2)
         st.download_button("Download do PDF", pdf_bytes, file_name="relatorio_diario.pdf", mime="application/pdf")
