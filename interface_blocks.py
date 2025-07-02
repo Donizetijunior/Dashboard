@@ -199,9 +199,25 @@ def dashboard_diario(perfil):
     col1, col2 = st.columns(2)
     datas = pd.to_datetime(df['data_competencia'], errors='coerce')
     data_min, data_max = datas.min(), datas.max()
-    data_inicio = col1.date_input("Data inicial", value=data_min, min_value=data_min, max_value=data_max, help="Selecione a data inicial do período.")
-    data_fim = col2.date_input("Data final", value=data_max, min_value=data_min, max_value=data_max, help="Selecione a data final do período.")
+    # Filtros de período pré-definidos
+    opcoes_periodo = ["Personalizado", "Últimos 7 dias", "Mês atual", "Mês anterior"]
+    periodo = col1.selectbox("Período", opcoes_periodo)
+    if periodo == "Últimos 7 dias":
+        data_inicio = data_max - pd.Timedelta(days=6)
+        data_fim = data_max
+    elif periodo == "Mês atual":
+        data_inicio = data_max.replace(day=1)
+        data_fim = data_max
+    elif periodo == "Mês anterior":
+        primeiro_dia_mes_atual = data_max.replace(day=1)
+        ultimo_dia_mes_anterior = primeiro_dia_mes_atual - pd.Timedelta(days=1)
+        data_inicio = ultimo_dia_mes_anterior.replace(day=1)
+        data_fim = ultimo_dia_mes_anterior
+    else:
+        data_inicio = col1.date_input("Data inicial", value=data_min, min_value=data_min, max_value=data_max)
+        data_fim = col2.date_input("Data final", value=data_max, min_value=data_min, max_value=data_max)
 
+    # Filtros básicos
     parceiros = df['parceiro'].dropna().unique()
     parceiro_sel = st.multiselect(
         f"Filtrar por cliente (opcional) [{len(parceiros)} clientes]",
@@ -209,11 +225,99 @@ def dashboard_diario(perfil):
         help="Selecione um ou mais clientes para filtrar os resultados."
     )
 
+    # Filtros avançados
+    with st.expander("🎛️ Filtros Avançados", expanded=False):
+        colf1, colf2 = st.columns(2)
+        # Hora do dia
+        hora_sel = colf1.slider("Hora do dia", 0, 23, (0, 23), help="Filtrar por horário da venda.") if 'hora' in df.columns else (0, 23)
+        # Dia da semana
+        dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+        dia_semana_sel = colf2.multiselect("Dia da semana", dias_semana, help="Filtrar por dia da semana.")
+        # Cidade/UF
+        cidade_sel = colf1.multiselect("Cidade de Entrega", df['cidade_entrega'].dropna().unique() if 'cidade_entrega' in df.columns else [], help="Filtrar por cidade de entrega.")
+        uf_sel = colf2.multiselect("UF de Entrega", df['uf_entrega'].dropna().unique() if 'uf_entrega' in df.columns else [], help="Filtrar por UF de entrega.")
+        # Operação
+        operacao_sel = colf1.multiselect("Operação", df['operacao'].dropna().unique() if 'operacao' in df.columns else [], help="Filtrar por tipo de operação.")
+        # Forma de pagamento
+        pagamento_sel = colf2.multiselect("Forma de Pagamento", df['tipo_da_condicao'].dropna().unique() if 'tipo_da_condicao' in df.columns else [], help="Filtrar por forma de pagamento.")
+        # Transportadora
+        transp_sel = colf1.multiselect("Transportadora", df['transportadora'].dropna().unique() if 'transportadora' in df.columns else [], help="Filtrar por transportadora.")
+        # Tipo de frete
+        tipo_frete_sel = colf2.multiselect("Tipo de Frete", df['tipo_frete'].dropna().unique() if 'tipo_frete' in df.columns else [], help="Filtrar por tipo de frete.")
+        # Vendedor
+        vendedor_sel = colf1.multiselect("Vendedor", df['vendedor'].dropna().unique() if 'vendedor' in df.columns else [], help="Filtrar por vendedor.")
+        # Filial
+        filial_sel = colf2.multiselect("Filial", df['filial'].dropna().unique() if 'filial' in df.columns else [], help="Filtrar por filial.")
+        # Código do produto
+        cod_prod_sel = colf1.multiselect("Código do Produto", df['codigo'].dropna().unique() if 'codigo' in df.columns else [], help="Filtrar por código do produto.")
+        # Quantidade vendida (faixa)
+        qtd_min, qtd_max = int(df['quantidade'].min()) if 'quantidade' in df.columns else 0, int(df['quantidade'].max()) if 'quantidade' in df.columns else 0
+        qtd_range = colf2.slider("Quantidade vendida", qtd_min, qtd_max, (qtd_min, qtd_max), help="Filtrar por faixa de quantidade.") if qtd_max > 0 else (0, 0)
+        # Total da venda (faixa)
+        val_min, val_max = float(df['valor'].min()), float(df['valor'].max())
+        val_range = colf1.slider("Total da venda (R$)", val_min, val_max, (val_min, val_max), help="Filtrar por faixa de valor.")
+        # Desconto aplicado (%)
+        desc_min, desc_max = 0.0, 100.0
+        desc_range = colf2.slider("Desconto aplicado (%)", desc_min, desc_max, (desc_min, desc_max), help="Filtrar por faixa de desconto.")
+        # Peso bruto
+        peso_min, peso_max = float(df['peso_bruto'].min()) if 'peso_bruto' in df.columns else 0, float(df['peso_bruto'].max()) if 'peso_bruto' in df.columns else 0
+        peso_range = colf1.slider("Peso Bruto", peso_min, peso_max, (peso_min, peso_max), help="Filtrar por faixa de peso bruto.") if peso_max > 0 else (0, 0)
+        # Peso líquido
+        pesol_min, pesol_max = float(df['peso_liquido'].min()) if 'peso_liquido' in df.columns else 0, float(df['peso_liquido'].max()) if 'peso_liquido' in df.columns else 0
+        pesol_range = colf2.slider("Peso Líquido", pesol_min, pesol_max, (pesol_min, pesol_max), help="Filtrar por faixa de peso líquido.") if pesol_max > 0 else (0, 0)
+
+    # Aplicar filtros
     df['data_competencia'] = pd.to_datetime(df['data_competencia'], errors='coerce')
     df_filtrado = df[(df['data_competencia'] >= pd.to_datetime(data_inicio)) &
                      (df['data_competencia'] <= pd.to_datetime(data_fim))]
     if parceiro_sel:
         df_filtrado = df_filtrado[df_filtrado['parceiro'].isin(parceiro_sel)]
+    # Hora do dia
+    if 'hora' in df.columns and hora_sel != (0, 23):
+        df_filtrado = df_filtrado[df_filtrado['hora'].astype(str).str[:2].astype(int).between(hora_sel[0], hora_sel[1])]
+    # Dia da semana
+    if dia_semana_sel:
+        df_filtrado = df_filtrado[df_filtrado['data_competencia'].dt.day_name(locale='pt_BR').isin(dia_semana_sel)]
+    # Cidade/UF
+    if cidade_sel:
+        df_filtrado = df_filtrado[df_filtrado['cidade_entrega'].isin(cidade_sel)]
+    if uf_sel:
+        df_filtrado = df_filtrado[df_filtrado['uf_entrega'].isin(uf_sel)]
+    # Operação
+    if operacao_sel:
+        df_filtrado = df_filtrado[df_filtrado['operacao'].isin(operacao_sel)]
+    # Forma de pagamento
+    if pagamento_sel:
+        df_filtrado = df_filtrado[df_filtrado['tipo_da_condicao'].isin(pagamento_sel)]
+    # Transportadora
+    if transp_sel:
+        df_filtrado = df_filtrado[df_filtrado['transportadora'].isin(transp_sel)]
+    # Tipo de frete
+    if tipo_frete_sel:
+        df_filtrado = df_filtrado[df_filtrado['tipo_frete'].isin(tipo_frete_sel)]
+    # Vendedor
+    if vendedor_sel:
+        df_filtrado = df_filtrado[df_filtrado['vendedor'].isin(vendedor_sel)]
+    # Filial
+    if filial_sel:
+        df_filtrado = df_filtrado[df_filtrado['filial'].isin(filial_sel)]
+    # Código do produto
+    if cod_prod_sel:
+        df_filtrado = df_filtrado[df_filtrado['codigo'].isin(cod_prod_sel)]
+    # Quantidade
+    if 'quantidade' in df.columns and qtd_range != (0, 0):
+        df_filtrado = df_filtrado[df_filtrado['quantidade'].astype(float).between(qtd_range[0], qtd_range[1])]
+    # Valor
+    df_filtrado = df_filtrado[df_filtrado['valor'].between(val_range[0], val_range[1])]
+    # Desconto
+    if 'desconto' in df.columns:
+        df_filtrado = df_filtrado[df_filtrado['desconto'].astype(float).between(desc_range[0], desc_range[1])]
+    # Peso bruto
+    if 'peso_bruto' in df.columns and peso_range != (0, 0):
+        df_filtrado = df_filtrado[df_filtrado['peso_bruto'].astype(float).between(peso_range[0], peso_range[1])]
+    # Peso líquido
+    if 'peso_liquido' in df.columns and pesol_range != (0, 0):
+        df_filtrado = df_filtrado[df_filtrado['peso_liquido'].astype(float).between(pesol_range[0], pesol_range[1])]
 
     st.divider()
 
