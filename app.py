@@ -7,7 +7,7 @@ from pathlib import Path
 from db_utils import init_db, insert_sales_from_csv, get_sales
 from auth_utils import authenticate, get_user_profile, load_users, save_users
 from interface_blocks import (
-    login_block, pagina_admin_usuarios, pagina_usuario, dashboard_diario, dashboard_total,
+    login_block, pagina_admin_usuarios, pagina_usuario, dashboard_diario,
     dashboard_clientes, dashboard_temporal, dashboard_devolucoes, dashboard_transportadoras, dashboard_condicao_pagamento,
     sidebar_customizada
 )
@@ -62,8 +62,6 @@ else:
         dash = st.session_state.dashboard
         if dash == "Relatório Diário":
             dashboard_diario(perfil)
-        elif dash == "Relatório Total":
-            dashboard_total()
         elif dash == "Clientes":
             dashboard_clientes()
         elif dash == "Temporal":

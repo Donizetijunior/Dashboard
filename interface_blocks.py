@@ -144,7 +144,6 @@ def sidebar_customizada(perfil):
     st.sidebar.markdown('<div class="sidebar-title">📊 Dashboards</div>', unsafe_allow_html=True)
     dashboards = [
         ("Relatório Diário", "📅"),
-        ("Relatório Total", "📈"),
         ("Clientes", "👥"),
         ("Temporal", "⏳"),
         ("Devoluções", "↩️"),
@@ -175,8 +174,8 @@ def sidebar_customizada(perfil):
 
 def dashboard_diario(perfil):
     st.markdown("""
-    <h1 style='text-align: center; margin-bottom: 0;'>📊 Dashboard Diário de Vendas</h1>
-    <p style='text-align: center; color: #888; margin-top: 0;'>Acompanhe as vendas do dia de forma visual e interativa</p>
+    <h1 style='text-align: left; margin-bottom: 0;'>📊 DASHBOARD DE VENDAS</h1>
+    <p style='text-align: left; color: #888; margin-top: 0;'>Acompanhe as vendas do dia de forma visual e interativa</p>
     """, unsafe_allow_html=True)
     st.divider()
 
@@ -195,143 +194,81 @@ def dashboard_diario(perfil):
         return
     df = padronizar_colunas(df)
 
-    st.markdown("<h4>📅 Filtros</h4>", unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
-    datas = pd.to_datetime(df['data_competencia'], errors='coerce')
-    data_min, data_max = datas.min(), datas.max()
-    # Filtros de período pré-definidos
-    opcoes_periodo = ["Personalizado", "Últimos 7 dias", "Mês atual", "Mês anterior"]
-    periodo = col1.selectbox("Período", opcoes_periodo)
-    if periodo == "Últimos 7 dias":
-        data_inicio = data_max - pd.Timedelta(days=6)
-        data_fim = data_max
-    elif periodo == "Mês atual":
-        data_inicio = data_max.replace(day=1)
-        data_fim = data_max
-    elif periodo == "Mês anterior":
-        primeiro_dia_mes_atual = data_max.replace(day=1)
-        ultimo_dia_mes_anterior = primeiro_dia_mes_atual - pd.Timedelta(days=1)
-        data_inicio = ultimo_dia_mes_anterior.replace(day=1)
-        data_fim = ultimo_dia_mes_anterior
-    else:
-        data_inicio = col1.date_input("Data inicial", value=data_min, min_value=data_min, max_value=data_max)
-        data_fim = col2.date_input("Data final", value=data_max, min_value=data_min, max_value=data_max)
-
-    # Filtros básicos
-    parceiros = df['parceiro'].dropna().unique()
-    parceiro_sel = st.multiselect(
-        f"Filtrar por cliente (opcional) [{len(parceiros)} clientes]",
-        parceiros,
-        help="Selecione um ou mais clientes para filtrar os resultados."
-    )
-
-    # Filtros avançados
-    with st.expander("🎛️ Filtros Avançados", expanded=False):
-        colf1, colf2 = st.columns(2)
-        # Hora do dia
-        hora_sel = colf1.slider("Hora do dia", 0, 23, (0, 23), help="Filtrar por horário da venda.") if 'hora' in df.columns else (0, 23)
-        # Dia da semana
-        dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
-        dia_semana_sel = colf2.multiselect("Dia da semana", dias_semana, help="Filtrar por dia da semana.")
-        # Cidade/UF
-        cidade_sel = colf1.multiselect("Cidade de Entrega", df['cidade_entrega'].dropna().unique() if 'cidade_entrega' in df.columns else [], help="Filtrar por cidade de entrega.")
-        uf_sel = colf2.multiselect("UF de Entrega", df['uf_entrega'].dropna().unique() if 'uf_entrega' in df.columns else [], help="Filtrar por UF de entrega.")
-        # Operação
-        operacao_sel = colf1.multiselect("Operação", df['operacao'].dropna().unique() if 'operacao' in df.columns else [], help="Filtrar por tipo de operação.")
-        # Forma de pagamento
-        pagamento_sel = colf2.multiselect("Forma de Pagamento", df['tipo_da_condicao'].dropna().unique() if 'tipo_da_condicao' in df.columns else [], help="Filtrar por forma de pagamento.")
-        # Transportadora
-        transp_sel = colf1.multiselect("Transportadora", df['transportadora'].dropna().unique() if 'transportadora' in df.columns else [], help="Filtrar por transportadora.")
-        # Tipo de frete
-        tipo_frete_sel = colf2.multiselect("Tipo de Frete", df['tipo_frete'].dropna().unique() if 'tipo_frete' in df.columns else [], help="Filtrar por tipo de frete.")
-        # Vendedor
-        vendedor_sel = colf1.multiselect("Vendedor", df['vendedor'].dropna().unique() if 'vendedor' in df.columns else [], help="Filtrar por vendedor.")
-        # Filial
-        filial_sel = colf2.multiselect("Filial", df['filial'].dropna().unique() if 'filial' in df.columns else [], help="Filtrar por filial.")
-        # Código do produto
-        cod_prod_sel = colf1.multiselect("Código do Produto", df['codigo'].dropna().unique() if 'codigo' in df.columns else [], help="Filtrar por código do produto.")
-        # Quantidade vendida (faixa)
-        qtd_min, qtd_max = int(df['quantidade'].min()) if 'quantidade' in df.columns else 0, int(df['quantidade'].max()) if 'quantidade' in df.columns else 0
-        qtd_range = colf2.slider("Quantidade vendida", qtd_min, qtd_max, (qtd_min, qtd_max), help="Filtrar por faixa de quantidade.") if qtd_max > 0 else (0, 0)
-        # Total da venda (faixa)
-        val_min, val_max = float(df['valor'].min()), float(df['valor'].max())
-        val_range = colf1.slider("Total da venda (R$)", val_min, val_max, (val_min, val_max), help="Filtrar por faixa de valor.")
-        # Desconto aplicado (%)
-        desc_min, desc_max = 0.0, 100.0
-        desc_range = colf2.slider("Desconto aplicado (%)", desc_min, desc_max, (desc_min, desc_max), help="Filtrar por faixa de desconto.")
-        # Peso bruto
-        peso_min, peso_max = float(df['peso_bruto'].min()) if 'peso_bruto' in df.columns else 0, float(df['peso_bruto'].max()) if 'peso_bruto' in df.columns else 0
-        peso_range = colf1.slider("Peso Bruto", peso_min, peso_max, (peso_min, peso_max), help="Filtrar por faixa de peso bruto.") if peso_max > 0 else (0, 0)
-        # Peso líquido
-        pesol_min, pesol_max = float(df['peso_liquido'].min()) if 'peso_liquido' in df.columns else 0, float(df['peso_liquido'].max()) if 'peso_liquido' in df.columns else 0
-        pesol_range = colf2.slider("Peso Líquido", pesol_min, pesol_max, (pesol_min, pesol_max), help="Filtrar por faixa de peso líquido.") if pesol_max > 0 else (0, 0)
+    # Filtros laterais
+    with st.sidebar:
+        st.markdown("<b>Filtros</b>", unsafe_allow_html=True)
+        anos = pd.to_datetime(df['data_competencia'], errors='coerce').dt.year.dropna().unique()
+        ano_sel = st.selectbox("Ano", sorted(anos, reverse=True))
+        meses = pd.to_datetime(df['data_competencia'], errors='coerce').dt.month_name(locale='pt_BR').unique()
+        mes_sel = st.selectbox("Mês", meses)
+        vendedores = df['vendedor'].dropna().unique() if 'vendedor' in df.columns else []
+        vendedor_sel = st.multiselect("Vendedor", vendedores)
+        clientes = df['parceiro'].dropna().unique()
+        cliente_sel = st.multiselect("Cliente", clientes)
+        produtos = df['codigo'].dropna().unique() if 'codigo' in df.columns else []
+        produto_sel = st.multiselect("Produto", produtos)
 
     # Aplicar filtros
     df['data_competencia'] = pd.to_datetime(df['data_competencia'], errors='coerce')
-    df_filtrado = df[(df['data_competencia'] >= pd.to_datetime(data_inicio)) &
-                     (df['data_competencia'] <= pd.to_datetime(data_fim))]
-    if parceiro_sel:
-        df_filtrado = df_filtrado[df_filtrado['parceiro'].isin(parceiro_sel)]
-    # Hora do dia
-    if 'hora' in df.columns and hora_sel != (0, 23):
-        df_filtrado = df_filtrado[df_filtrado['hora'].astype(str).str[:2].astype(int).between(hora_sel[0], hora_sel[1])]
-    # Dia da semana
-    if dia_semana_sel:
-        df_filtrado = df_filtrado[df_filtrado['data_competencia'].dt.day_name(locale='pt_BR').isin(dia_semana_sel)]
-    # Cidade/UF
-    if cidade_sel:
-        df_filtrado = df_filtrado[df_filtrado['cidade_entrega'].isin(cidade_sel)]
-    if uf_sel:
-        df_filtrado = df_filtrado[df_filtrado['uf_entrega'].isin(uf_sel)]
-    # Operação
-    if operacao_sel:
-        df_filtrado = df_filtrado[df_filtrado['operacao'].isin(operacao_sel)]
-    # Forma de pagamento
-    if pagamento_sel:
-        df_filtrado = df_filtrado[df_filtrado['tipo_da_condicao'].isin(pagamento_sel)]
-    # Transportadora
-    if transp_sel:
-        df_filtrado = df_filtrado[df_filtrado['transportadora'].isin(transp_sel)]
-    # Tipo de frete
-    if tipo_frete_sel:
-        df_filtrado = df_filtrado[df_filtrado['tipo_frete'].isin(tipo_frete_sel)]
-    # Vendedor
+    df = df[df['data_competencia'].dt.year == ano_sel]
+    df = df[df['data_competencia'].dt.month_name(locale='pt_BR') == mes_sel]
     if vendedor_sel:
-        df_filtrado = df_filtrado[df_filtrado['vendedor'].isin(vendedor_sel)]
-    # Filial
-    if filial_sel:
-        df_filtrado = df_filtrado[df_filtrado['filial'].isin(filial_sel)]
-    # Código do produto
-    if cod_prod_sel:
-        df_filtrado = df_filtrado[df_filtrado['codigo'].isin(cod_prod_sel)]
-    # Quantidade
-    if 'quantidade' in df.columns and qtd_range != (0, 0):
-        df_filtrado = df_filtrado[df_filtrado['quantidade'].astype(float).between(qtd_range[0], qtd_range[1])]
-    # Valor
-    df_filtrado = df_filtrado[df_filtrado['valor'].between(val_range[0], val_range[1])]
-    # Desconto
-    if 'desconto' in df.columns:
-        df_filtrado = df_filtrado[df_filtrado['desconto'].astype(float).between(desc_range[0], desc_range[1])]
-    # Peso bruto
-    if 'peso_bruto' in df.columns and peso_range != (0, 0):
-        df_filtrado = df_filtrado[df_filtrado['peso_bruto'].astype(float).between(peso_range[0], peso_range[1])]
-    # Peso líquido
-    if 'peso_liquido' in df.columns and pesol_range != (0, 0):
-        df_filtrado = df_filtrado[df_filtrado['peso_liquido'].astype(float).between(pesol_range[0], pesol_range[1])]
+        df = df[df['vendedor'].isin(vendedor_sel)]
+    if cliente_sel:
+        df = df[df['parceiro'].isin(cliente_sel)]
+    if produto_sel:
+        df = df[df['codigo'].isin(produto_sel)]
+
+    # KPIs
+    col_kpi1, col_kpi2 = st.columns(2)
+    faturamento_total = df['valor'].sum()
+    qtd_produtos = df['quantidade'].astype(float).sum() if 'quantidade' in df.columns else 0
+    col_kpi1.metric("Faturamento Total", f"R$ {faturamento_total:,.2f}")
+    col_kpi2.metric("QTD Produtos Vendidos", f"{int(qtd_produtos)}")
+
+    # Gráfico: Faturamento mensal x Meta
+    st.markdown("<h4>Faturamento mensal x Meta</h4>", unsafe_allow_html=True)
+    df['mes'] = df['data_competencia'].dt.strftime('%b')
+    fat_mes = df.groupby('mes')['valor'].sum().reindex(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']).fillna(0)
+    meta = [faturamento_total/len(fat_mes)]*len(fat_mes) if len(fat_mes) > 0 else []
+    chart_fat = pd.DataFrame({'Faturamento': fat_mes, 'Meta': meta})
+    st.bar_chart(chart_fat)
+
+    # Gráfico: Vendas por produto (pizza)
+    if 'codigo' in df.columns:
+        st.markdown("<h4>Vendas de Produtos</h4>", unsafe_allow_html=True)
+        prod_pizza = df.groupby('codigo')['quantidade'].sum().sort_values(ascending=False)
+        st.pyplot(plt.pie(prod_pizza, labels=prod_pizza.index, autopct='%1.0f%%')[0].figure)
+
+    # Gráfico: Vendas por cliente (barra horizontal)
+    st.markdown("<h4>Vendas por clientes</h4>", unsafe_allow_html=True)
+    top_clientes = df.groupby('parceiro')['valor'].sum().sort_values(ascending=False).head(10)
+    st.bar_chart(top_clientes)
+
+    # Gráfico: Faturamento por vendedor (barra horizontal)
+    if 'vendedor' in df.columns:
+        st.markdown("<h4>Faturamento por Vendedor</h4>", unsafe_allow_html=True)
+        fat_vend = df.groupby('vendedor')['valor'].sum().sort_values(ascending=False)
+        st.bar_chart(fat_vend)
+
+    # Gráfico: Faturamento mensal (linha)
+    st.markdown("<h4>Faturamento mensal</h4>", unsafe_allow_html=True)
+    fat_mensal = df.groupby(df['data_competencia'].dt.month)['valor'].sum()
+    st.line_chart(fat_mensal)
 
     st.divider()
 
     # KPIs em cards
     st.markdown("<h4 style='margin-bottom:0;'>📌 Indicadores</h4>", unsafe_allow_html=True)
     kpi1, kpi2, kpi3 = st.columns(3)
-    kpi1.metric("Total de Vendas", f"{df_filtrado['numero_venda'].nunique()}", help="Quantidade de vendas únicas no período filtrado.")
-    kpi2.metric("Clientes Únicos", f"{df_filtrado['parceiro'].nunique()}", help="Quantidade de clientes diferentes.")
-    ticket_medio = df_filtrado['valor'].sum() / max(df_filtrado['numero_venda'].nunique(), 1)
+    kpi1.metric("Total de Vendas", f"{df['numero_venda'].nunique()}", help="Quantidade de vendas únicas no período filtrado.")
+    kpi2.metric("Clientes Únicos", f"{df['parceiro'].nunique()}", help="Quantidade de clientes diferentes.")
+    ticket_medio = df['valor'].sum() / max(df['numero_venda'].nunique(), 1)
     kpi3.metric("Ticket Médio", f"R$ {ticket_medio:,.2f}", help="Valor médio por venda.")
     kpi4, kpi5, kpi6 = st.columns(3)
-    total_vendido = df_filtrado['valor'].sum()
-    total_desconto = df_filtrado['desconto'].astype(str).str.replace(',', '.').astype(float).sum() if 'desconto' in df_filtrado.columns else 0
-    total_acrescimo = df_filtrado['acrescimo'].astype(str).str.replace(',', '.').astype(float).sum() if 'acrescimo' in df_filtrado.columns else 0
+    total_vendido = df['valor'].sum()
+    total_desconto = df['desconto'].astype(str).str.replace(',', '.').astype(float).sum() if 'desconto' in df.columns else 0
+    total_acrescimo = df['acrescimo'].astype(str).str.replace(',', '.').astype(float).sum() if 'acrescimo' in df.columns else 0
     kpi4.metric("Total Vendido", f"R$ {total_vendido:,.2f}")
     kpi5.metric("Total Desconto", f"R$ {total_desconto:,.2f}")
     kpi6.metric("Total Acréscimo", f"R$ {total_acrescimo:,.2f}")
@@ -341,7 +278,7 @@ def dashboard_diario(perfil):
 
     # Gráfico: Top Clientes
     st.markdown("<h4>👥 Top 10 Clientes</h4>", unsafe_allow_html=True)
-    top_clientes = df_filtrado.groupby('parceiro')['valor'].sum().sort_values(ascending=False).head(10).reset_index()
+    top_clientes = df.groupby('parceiro')['valor'].sum().sort_values(ascending=False).head(10).reset_index()
     if not top_clientes.empty:
         chart = alt.Chart(top_clientes).mark_bar().encode(
             x=alt.X('valor:Q', title='Valor Total'),
@@ -356,7 +293,7 @@ def dashboard_diario(perfil):
 
     # Gráfico: Evolução temporal
     st.markdown("<h4>📈 Vendas ao Longo do Tempo</h4>", unsafe_allow_html=True)
-    vendas_tempo = df_filtrado.groupby('data_competencia')['valor'].sum().reset_index()
+    vendas_tempo = df.groupby('data_competencia')['valor'].sum().reset_index()
     if not vendas_tempo.empty:
         chart2 = alt.Chart(vendas_tempo).mark_line(point=True).encode(
             x=alt.X('data_competencia:T', title='Data'),
@@ -371,17 +308,17 @@ def dashboard_diario(perfil):
 
     # Tabela de dados filtrados
     st.markdown("<h4>📄 Tabela de Vendas Filtradas</h4>", unsafe_allow_html=True)
-    st.dataframe(df_filtrado, use_container_width=True, height=350)
+    st.dataframe(df, use_container_width=True, height=350)
 
     # Botão para gerar PDF
     if st.button("⬇️ Baixar Relatório em PDF"):
         kpis = {
-            'total_vendas': df_filtrado['numero_venda'].nunique(),
-            'clientes_unicos': df_filtrado['parceiro'].nunique(),
+            'total_vendas': df['numero_venda'].nunique(),
+            'clientes_unicos': df['parceiro'].nunique(),
             'ticket_medio': ticket_medio,
             'total_vendido': total_vendido
         }
-        pdf_bytes = gerar_pdf_dashboard_diario(df_filtrado, kpis, chart, chart2)
+        pdf_bytes = gerar_pdf_dashboard_diario(df, kpis, chart, chart2)
         st.download_button("Download do PDF", pdf_bytes, file_name="relatorio_diario.pdf", mime="application/pdf")
 
     if perfil == "admin":
@@ -391,37 +328,6 @@ def dashboard_diario(perfil):
     else:
         if st.button("👤 Ver meu perfil"):
             st.session_state.pagina = "usuario"
-
-def dashboard_total():
-    st.title("Resumo Executivo")
-    resumo = {
-        "total_vendas": 680,
-        "clientes_unicos": 157,
-        "valor_total": 2308260.56,
-        "ticket_medio": 3394.50,
-        "ticket_primeira": 2522.56,
-        "clientes_novos_mes": {
-            "Janeiro 2025": 6,
-            "Fevereiro 2025": 16,
-            "Março 2025": 29,
-            "Abril 2025": 42,
-            "Maio 2025": 47,
-            "Junho 2025": 17
-        }
-    }
-    st.metric("Total de Vendas", resumo["total_vendas"])
-    st.metric("Clientes Únicos", resumo["clientes_unicos"])
-    st.metric("Valor Total de Vendas", f'R$ {resumo["valor_total"]:,.2f}')
-    st.metric("Ticket Médio Geral", f'R$ {resumo["ticket_medio"]:,.2f}')
-    st.metric("Ticket Médio Primeira Compra", f'R$ {resumo["ticket_primeira"]:,.2f}')
-    st.subheader("Leads Novos por Mês")
-    st.table(pd.DataFrame(list(resumo["clientes_novos_mes"].items()), columns=["Mês", "Novos Clientes"]))
-    st.info("Para mais detalhes, consulte o PDF completo.")
-    if os.path.exists('Relatório de Vendas - Análise Completa.pdf'):
-        with open('Relatório de Vendas - Análise Completa.pdf', 'rb') as pdf_file:
-            st.download_button("Baixar Relatório Completo (PDF)", pdf_file, file_name='Relatório de Vendas - Análise Completa.pdf')
-    else:
-        st.warning("Arquivo PDF não encontrado.")
 
 # ========== Dashboards Temáticos ==========
 
