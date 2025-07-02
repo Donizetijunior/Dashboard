@@ -118,7 +118,60 @@ def padronizar_colunas(df):
         col = unicodedata.normalize('NFKD', col).encode('ASCII', 'ignore').decode('ASCII')
         return col.strip().lower().replace(' ', '_')
     df.columns = [clean(c) for c in df.columns]
+    # Mapeamento para garantir compatibilidade com o banco
+    col_map = {
+        'data_competencia': 'data_competencia',
+        'data_competencia_': 'data_competencia',
+        'data': 'data_competencia',
+        'n_venda': 'numero_venda',
+        'numero_venda': 'numero_venda',
+        'parceiro': 'parceiro',
+        'valor': 'valor',
+        'total': 'valor',
+    }
+    df = df.rename(columns={c: col_map.get(c, c) for c in df.columns})
     return df
+
+def sidebar_customizada(perfil):
+    st.sidebar.markdown("""
+    <style>
+    .sidebar-title { font-size: 18px; font-weight: bold; margin-bottom: 8px; }
+    .sidebar-section { margin-bottom: 18px; }
+    </style>
+    """, unsafe_allow_html=True)
+    st.sidebar.success(f"<b>👤 Logado como:</b> <span style='color:#fff'>{st.session_state.usuario}</span>", icon="✅")
+    st.sidebar.divider()
+    st.sidebar.markdown('<div class="sidebar-title">📊 Dashboards</div>', unsafe_allow_html=True)
+    dashboards = [
+        ("Relatório Diário", "📅"),
+        ("Relatório Total", "📈"),
+        ("Clientes", "👥"),
+        ("Temporal", "⏳"),
+        ("Devoluções", "↩️"),
+        ("Transportadoras", "🚚"),
+        ("Condição de Pagamento", "💳")
+    ]
+    for dash, icone in dashboards:
+        if st.sidebar.button(f"{icone} {dash}", key=f"btn_{dash}"):
+            st.session_state.dashboard = dash
+            st.session_state.pagina = 'dashboard'
+    st.sidebar.divider()
+    if perfil == "admin":
+        st.sidebar.markdown('<div class="sidebar-title">⚙️ Administração</div>', unsafe_allow_html=True)
+        if st.sidebar.button("👤 Gerenciar Usuários", key="btn_admin_usuarios"):
+            st.session_state.pagina = "admin_usuarios"
+        if st.sidebar.button("📝 Meu Perfil", key="btn_meu_perfil"):
+            st.session_state.pagina = "usuario"
+    else:
+        st.sidebar.markdown('<div class="sidebar-title">👤 Conta</div>', unsafe_allow_html=True)
+        if st.sidebar.button("📝 Meu Perfil", key="btn_meu_perfil"):
+            st.session_state.pagina = "usuario"
+    st.sidebar.divider()
+    if st.sidebar.button("🚪 Sair", key="btn_sair"):
+        st.session_state.logado = False
+        st.session_state.usuario = ''
+        st.session_state.pagina = 'dashboard'
+        st.experimental_rerun()
 
 def dashboard_diario(perfil):
     st.markdown("""
@@ -146,11 +199,15 @@ def dashboard_diario(perfil):
     col1, col2 = st.columns(2)
     datas = pd.to_datetime(df['data_competencia'], errors='coerce')
     data_min, data_max = datas.min(), datas.max()
-    data_inicio = col1.date_input("Data inicial", value=data_min, min_value=data_min, max_value=data_max)
-    data_fim = col2.date_input("Data final", value=data_max, min_value=data_min, max_value=data_max)
+    data_inicio = col1.date_input("Data inicial", value=data_min, min_value=data_min, max_value=data_max, help="Selecione a data inicial do período.")
+    data_fim = col2.date_input("Data final", value=data_max, min_value=data_min, max_value=data_max, help="Selecione a data final do período.")
 
     parceiros = df['parceiro'].dropna().unique()
-    parceiro_sel = st.multiselect("Filtrar por cliente (opcional)", parceiros)
+    parceiro_sel = st.multiselect(
+        f"Filtrar por cliente (opcional) [{len(parceiros)} clientes]",
+        parceiros,
+        help="Selecione um ou mais clientes para filtrar os resultados."
+    )
 
     df['data_competencia'] = pd.to_datetime(df['data_competencia'], errors='coerce')
     df_filtrado = df[(df['data_competencia'] >= pd.to_datetime(data_inicio)) &
@@ -213,7 +270,7 @@ def dashboard_diario(perfil):
     st.dataframe(df_filtrado, use_container_width=True, height=350)
 
     # Botão para gerar PDF
-    if st.button("Baixar Relatório em PDF"):
+    if st.button("⬇️ Baixar Relatório em PDF"):
         kpis = {
             'total_vendas': df_filtrado['numero_venda'].nunique(),
             'clientes_unicos': df_filtrado['parceiro'].nunique(),
@@ -225,10 +282,10 @@ def dashboard_diario(perfil):
 
     if perfil == "admin":
         st.divider()
-        if st.button("Ir para Gerenciar Usuários"):
+        if st.button("👤 Ir para Gerenciar Usuários"):
             st.session_state.pagina = "admin_usuarios"
     else:
-        if st.button("Ver meu perfil"):
+        if st.button("👤 Ver meu perfil"):
             st.session_state.pagina = "usuario"
 
 def dashboard_total():

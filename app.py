@@ -8,7 +8,8 @@ from db_utils import init_db, insert_sales_from_csv, get_sales
 from auth_utils import authenticate, get_user_profile, load_users, save_users
 from interface_blocks import (
     login_block, pagina_admin_usuarios, pagina_usuario, dashboard_diario, dashboard_total,
-    dashboard_clientes, dashboard_temporal, dashboard_devolucoes, dashboard_transportadoras, dashboard_condicao_pagamento
+    dashboard_clientes, dashboard_temporal, dashboard_devolucoes, dashboard_transportadoras, dashboard_condicao_pagamento,
+    sidebar_customizada
 )
 
 # =====================
@@ -50,40 +51,8 @@ if 'dashboard' not in st.session_state:
 if not st.session_state.logado:
     login_block()
 else:
-    st.sidebar.success(f"Logado como: {st.session_state.usuario}")
     perfil = get_user_profile(st.session_state.usuario)
-    if st.sidebar.button("Sair"):
-        st.session_state.logado = False
-        st.session_state.usuario = ''
-        st.session_state.pagina = 'dashboard'
-        st.experimental_rerun()
-
-    dashboards = [
-        "Relatório Diário",
-        "Relatório Total",
-        "Clientes",
-        "Temporal",
-        "Devoluções",
-        "Transportadoras",
-        "Condição de Pagamento"
-    ]
-    st.sidebar.markdown("### Dashboards")
-    for dash in dashboards:
-        if st.sidebar.button(dash, key=f"btn_{dash}"):
-            st.session_state.dashboard = dash
-            st.session_state.pagina = 'dashboard'
-
-    if perfil == "admin":
-        st.sidebar.markdown("### Administração")
-        if st.sidebar.button("Gerenciar Usuários", key="btn_admin_usuarios"):
-            st.session_state.pagina = "admin_usuarios"
-        if st.sidebar.button("Meu Perfil", key="btn_meu_perfil"):
-            st.session_state.pagina = "usuario"
-    else:
-        st.sidebar.markdown("### Conta")
-        if st.sidebar.button("Meu Perfil", key="btn_meu_perfil"):
-            st.session_state.pagina = "usuario"
-
+    sidebar_customizada(perfil)
     # Renderização das páginas
     if st.session_state.pagina == "admin_usuarios" and perfil == "admin":
         pagina_admin_usuarios()
