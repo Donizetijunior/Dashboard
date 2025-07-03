@@ -185,6 +185,8 @@ def dashboard_diario(perfil):
             if uploaded_file:
                 df_novo = pd.read_csv(uploaded_file, sep=';', encoding='latin1')
                 df_novo = padronizar_colunas(df_novo)
+                st.info(f"Colunas detectadas no CSV: {list(df_novo.columns)}")
+                st.dataframe(df_novo.head(10), use_container_width=True)
                 insert_sales_from_csv(df_novo)
                 st.success("Arquivo carregado e dados inseridos com sucesso!")
 
@@ -193,6 +195,8 @@ def dashboard_diario(perfil):
         st.warning("Nenhum dado disponível. Faça upload de um CSV.")
         return
     df = padronizar_colunas(df)
+    st.info(f"Colunas no DataFrame após importação: {list(df.columns)}")
+    st.dataframe(df.head(10), use_container_width=True)
 
     # Filtros laterais
     with st.sidebar:
