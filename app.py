@@ -66,9 +66,5 @@ else:
             dashboard_clientes()
         elif dash == "Temporal":
             dashboard_temporal()
-        elif dash == "Devoluções":
-            dashboard_devolucoes()
-        elif dash == "Transportadoras":
-            dashboard_transportadoras()
         elif dash == "Condição de Pagamento":
             dashboard_condicao_pagamento()

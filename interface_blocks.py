@@ -140,12 +140,16 @@ def padronizar_colunas(df):
         'vendedor': 'vendedor',
         'codigo': 'codigo',
         'operacao': 'operacao',
+        # Mapeamento robusto para condição de pagamento
         'tipo_da_condicao': 'tipo_da_condicao',
+        'tipodacondicao': 'tipo_da_condicao',
+        'tipo_condicao': 'tipo_da_condicao',
+        'tipo_da_condicao_1': 'tipo_da_condicao',
+        # ... outros mapeamentos ...
         'transportadora': 'transportadora',
         'cidade_entrega': 'cidade_entrega',
         'uf_entrega': 'uf_entrega',
         'filial': 'filial',
-        # ... adicione outros conforme necessário ...
     }
     df = df.rename(columns={c: col_map.get(c, c) for c in df.columns})
     return df
@@ -164,8 +168,6 @@ def sidebar_customizada(perfil):
         ("Relatório Diário", "📅"),
         ("Clientes", "👥"),
         ("Temporal", "⏳"),
-        ("Devoluções", "↩️"),
-        ("Transportadoras", "🚚"),
         ("Condição de Pagamento", "💳")
     ]
     for dash, icone in dashboards:
