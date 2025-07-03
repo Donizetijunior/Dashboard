@@ -135,16 +135,25 @@ def padronizar_colunas(df):
         'data': 'data_competencia',
         'no_venda': 'numero_venda',
         'parceiro': 'parceiro',
+        'cliente': 'parceiro',
+        'nome_cliente': 'parceiro',
         'valor': 'valor',
         'quantidade': 'quantidade',
         'vendedor': 'vendedor',
-        'codigo': 'codigo',
+        'nome_vendedor': 'vendedor',
+        # Produto: usar a primeira ocorrência de 'codigo' como 'codigo_produto'
+        'codigo': 'codigo_produto',
+        'codigo_1': 'codigo_aux1',
+        'codigo_2': 'codigo_aux2',
+        'cod_produto': 'codigo_produto',
+        'produto': 'codigo_produto',
         'operacao': 'operacao',
-        # Mapeamento robusto para condição de pagamento
+        # Condição de pagamento
         'tipo_da_condicao': 'tipo_da_condicao',
         'tipodacondicao': 'tipo_da_condicao',
         'tipo_condicao': 'tipo_da_condicao',
         'tipo_da_condicao_1': 'tipo_da_condicao',
+        'forma': 'forma_pagamento',
         # ... outros mapeamentos ...
         'transportadora': 'transportadora',
         'cidade_entrega': 'cidade_entrega',
@@ -152,6 +161,10 @@ def padronizar_colunas(df):
         'filial': 'filial',
     }
     df = df.rename(columns={c: col_map.get(c, c) for c in df.columns})
+    # Garante que as colunas de filtro existam, mesmo que vazias
+    for col in ['vendedor', 'parceiro', 'codigo_produto', 'tipo_da_condicao', 'forma_pagamento']:
+        if col not in df.columns:
+            df[col] = ''
     return df
 
 def sidebar_customizada(perfil):
@@ -229,7 +242,7 @@ def dashboard_diario(perfil):
         vendedor_sel = st.multiselect("Vendedor", vendedores)
         clientes = df['parceiro'].dropna().unique()
         cliente_sel = st.multiselect("Cliente", clientes)
-        produtos = df['codigo'].dropna().unique() if 'codigo' in df.columns else []
+        produtos = df['codigo_produto'].dropna().unique() if 'codigo_produto' in df.columns else []
         produto_sel = st.multiselect("Produto", produtos)
 
     # Aplicar filtros
@@ -241,7 +254,7 @@ def dashboard_diario(perfil):
     if cliente_sel:
         df = df[df['parceiro'].isin(cliente_sel)]
     if produto_sel:
-        df = df[df['codigo'].isin(produto_sel)]
+        df = df[df['codigo_produto'].isin(produto_sel)]
 
     # KPIs
     col_kpi1, col_kpi2 = st.columns(2)
@@ -259,9 +272,9 @@ def dashboard_diario(perfil):
     st.bar_chart(chart_fat)
 
     # Gráfico: Vendas por produto (pizza)
-    if 'codigo' in df.columns:
+    if 'codigo_produto' in df.columns:
         st.markdown("<h4>Vendas de Produtos</h4>", unsafe_allow_html=True)
-        prod_pizza = df.groupby('codigo')['quantidade'].sum().sort_values(ascending=False)
+        prod_pizza = df.groupby('codigo_produto')['quantidade'].sum().sort_values(ascending=False)
         st.pyplot(plt.pie(prod_pizza, labels=prod_pizza.index, autopct='%1.0f%%')[0].figure)
 
     # Gráfico: Vendas por cliente (barra horizontal)
@@ -462,14 +475,26 @@ def dashboard_condicao_pagamento():
     """, unsafe_allow_html=True)
     st.divider()
     df = get_sales()
-    if df.empty or 'Tipo da Condição' not in df.columns:
+    if df.empty or ('tipo_da_condicao' not in df.columns and 'forma_pagamento' not in df.columns):
         st.warning("Nenhum dado disponível.")
         return
     st.markdown("<h4>Distribuição por Tipo de Condição</h4>", unsafe_allow_html=True)
-    cond = df['Tipo da Condição'].value_counts().reset_index()
-    cond.columns = ['Tipo da Condição', 'Quantidade']
-    st.bar_chart(cond.set_index('Tipo da Condição'))
+    if 'tipo_da_condicao' in df.columns and df['tipo_da_condicao'].str.strip().any():
+        cond = df['tipo_da_condicao'].value_counts().reset_index()
+        cond.columns = ['Tipo da Condição', 'Quantidade']
+        st.bar_chart(cond.set_index('Tipo da Condição'))
+    else:
+        st.info("Nenhum dado para 'Tipo da Condição'.")
+    st.divider()
+    st.markdown("<h4>Distribuição por Forma de Pagamento</h4>", unsafe_allow_html=True)
+    if 'forma_pagamento' in df.columns and df['forma_pagamento'].str.strip().any():
+        forma = df['forma_pagamento'].value_counts().reset_index()
+        forma.columns = ['Forma de Pagamento', 'Quantidade']
+        st.bar_chart(forma.set_index('Forma de Pagamento'))
+    else:
+        st.info("Nenhum dado para 'Forma de Pagamento'.")
     st.divider()
     st.markdown("<h4>Ticket Médio por Condição</h4>", unsafe_allow_html=True)
-    ticket = df.groupby('Tipo da Condição')['valor'].mean().sort_values(ascending=False).reset_index()
-    st.dataframe(ticket, use_container_width=True) 
+    if 'tipo_da_condicao' in df.columns and df['tipo_da_condicao'].str.strip().any():
+        ticket = df.groupby('tipo_da_condicao')['valor'].mean().sort_values(ascending=False).reset_index()
+        st.dataframe(ticket, use_container_width=True) 
