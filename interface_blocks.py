@@ -222,6 +222,15 @@ def sidebar_customizada(perfil):
     """, unsafe_allow_html=True)
     st.sidebar.markdown(f"<div style='background:#198754;padding:10px;border-radius:8px;color:#fff;font-weight:bold;'>✅ <b>👤 Logado como:</b> {st.session_state.usuario}</div>", unsafe_allow_html=True)
     st.sidebar.divider()
+    # Upload de CSV apenas para admin
+    if get_user_profile(st.session_state.usuario) == "admin":
+        st.sidebar.markdown("### 📁 Upload de novo CSV")
+        uploaded_file = st.sidebar.file_uploader("Selecione um arquivo .csv", type="csv")
+        if uploaded_file:
+            df_novo = pd.read_csv(uploaded_file, sep=';', encoding='latin1')
+            df_novo = padronizar_colunas(df_novo)
+            insert_sales_from_csv(df_novo)
+            st.sidebar.success("Arquivo carregado e dados inseridos com sucesso!")
     st.sidebar.markdown('<div class="sidebar-title">📊 Dashboards</div>', unsafe_allow_html=True)
     dashboards = [
         ("Relatório Diário", "📅"),
@@ -249,7 +258,13 @@ def sidebar_customizada(perfil):
         st.session_state.logado = False
         st.session_state.usuario = ''
         st.session_state.pagina = 'dashboard'
-        st.experimental_rerun()
+        try:
+            st.rerun()
+        except AttributeError:
+            try:
+                st.experimental_rerun()
+            except AttributeError:
+                pass
 
 def dashboard_diario(perfil):
     st.markdown("""
@@ -297,16 +312,6 @@ def dashboard_diario(perfil):
     <p style='text-align: left; color: #b0b8c1; margin-top: 0;'>Acompanhe as vendas do dia de forma visual e interativa</p>
     """, unsafe_allow_html=True)
     st.divider()
-
-    if perfil == "admin":
-        with st.expander("📁 Upload de novo CSV", expanded=False):
-            uploaded_file = st.file_uploader("Selecione um arquivo .csv", type="csv")
-            if uploaded_file:
-                df_novo = pd.read_csv(uploaded_file, sep=';', encoding='latin1')
-                df_novo = padronizar_colunas(df_novo)
-                insert_sales_from_csv(df_novo)
-                st.success("Arquivo carregado e dados inseridos com sucesso!")
-
     df = get_sales()
     if df.empty:
         st.warning("Nenhum dado disponível. Faça upload de um CSV.")
