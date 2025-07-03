@@ -11,6 +11,7 @@ import base64
 import shutil
 from altair_saver import save as altair_save
 import unicodedata
+import numpy as np
 
 def login_block():
     st.title("🔐 Login")
@@ -296,8 +297,8 @@ def dashboard_diario(perfil):
 
     # KPIs
     col_kpi1, col_kpi2 = st.columns(2)
-    faturamento_total = df['valor'].sum()
-    qtd_produtos = df['quantidade'].astype(float).sum() if 'quantidade' in df.columns else 0
+    faturamento_total = pd.to_numeric(df['valor'], errors='coerce').fillna(0).sum() if 'valor' in df.columns else 0
+    qtd_produtos = pd.to_numeric(df['quantidade'], errors='coerce').fillna(0).sum() if 'quantidade' in df.columns else 0
     col_kpi1.metric("Faturamento Total", f"R$ {faturamento_total:,.2f}")
     col_kpi2.metric("QTD Produtos Vendidos", f"{int(qtd_produtos)}")
 
@@ -312,7 +313,7 @@ def dashboard_diario(perfil):
     # Gráfico: Vendas por produto (pizza)
     if 'codigo_produto' in df.columns:
         st.markdown("<h4>Vendas de Produtos</h4>", unsafe_allow_html=True)
-        prod_pizza = df.groupby('codigo_produto')['quantidade'].sum().sort_values(ascending=False)
+        prod_pizza = df.groupby('codigo_produto')[pd.to_numeric(df['quantidade'], errors='coerce').fillna(0).name].sum().sort_values(ascending=False)
         st.pyplot(plt.pie(prod_pizza, labels=prod_pizza.index, autopct='%1.0f%%')[0].figure)
 
     # Gráfico: Vendas por cliente (barra horizontal)
@@ -338,12 +339,12 @@ def dashboard_diario(perfil):
     kpi1, kpi2, kpi3 = st.columns(3)
     kpi1.metric("Total de Vendas", f"{df['numero_venda'].nunique()}", help="Quantidade de vendas únicas no período filtrado.")
     kpi2.metric("Clientes Únicos", f"{df['parceiro'].nunique()}", help="Quantidade de clientes diferentes.")
-    ticket_medio = df['valor'].sum() / max(df['numero_venda'].nunique(), 1)
+    ticket_medio = pd.to_numeric(df['valor'], errors='coerce').fillna(0).sum() / max(df['numero_venda'].nunique(), 1)
     kpi3.metric("Ticket Médio", f"R$ {ticket_medio:,.2f}", help="Valor médio por venda.")
     kpi4, kpi5, kpi6 = st.columns(3)
-    total_vendido = df['valor'].sum()
-    total_desconto = df['desconto'].astype(str).str.replace(',', '.').astype(float).sum() if 'desconto' in df.columns else 0
-    total_acrescimo = df['acrescimo'].astype(str).str.replace(',', '.').astype(float).sum() if 'acrescimo' in df.columns else 0
+    total_vendido = pd.to_numeric(df['valor'], errors='coerce').fillna(0).sum()
+    total_desconto = pd.to_numeric(df['desconto'], errors='coerce').fillna(0).astype(str).str.replace(',', '.').astype(float).sum() if 'desconto' in df.columns else 0
+    total_acrescimo = pd.to_numeric(df['acrescimo'], errors='coerce').fillna(0).astype(str).str.replace(',', '.').astype(float).sum() if 'acrescimo' in df.columns else 0
     kpi4.metric("Total Vendido", f"R$ {total_vendido:,.2f}")
     kpi5.metric("Total Desconto", f"R$ {total_desconto:,.2f}")
     kpi6.metric("Total Acréscimo", f"R$ {total_acrescimo:,.2f}")
@@ -465,11 +466,11 @@ def dashboard_devolucoes():
         st.warning("Nenhum dado disponível.")
         return
     # Considera devolução se quantidade negativa ou operação contém DEVOLUCAO
-    df['is_devolucao'] = (df['Quantidade'].astype(str).str.replace(',', '.').astype(float) < 0) | (df['Operação'].str.upper().str.contains('DEVOLUCAO'))
+    df['is_devolucao'] = (pd.to_numeric(df['quantidade'], errors='coerce').fillna(0) < 0) | (df['operacao'].str.upper().str.contains('DEVOLUCAO'))
     df_dev = df[df['is_devolucao']]
     k1, k2 = st.columns(2)
     k1.metric("Total de Devoluções", len(df_dev))
-    k2.metric("Valor Devolvido", f"R$ {df_dev['valor'].sum():,.2f}")
+    k2.metric("Valor Devolvido", f"R$ {pd.to_numeric(df_dev['valor'], errors='coerce').fillna(0).sum():,.2f}")
     st.divider()
     st.markdown("<h4>Devoluções ao Longo do Tempo</h4>", unsafe_allow_html=True)
     devolucoes_tempo = df_dev.groupby('data_competencia')['valor'].sum().reset_index()
