@@ -116,18 +116,36 @@ def padronizar_colunas(df):
     # Remove acentos e caracteres especiais, deixa tudo minúsculo e sem espaços
     def clean(col):
         col = unicodedata.normalize('NFKD', col).encode('ASCII', 'ignore').decode('ASCII')
-        return col.strip().lower().replace(' ', '_')
-    df.columns = [clean(c) for c in df.columns]
+        return col.strip().lower().replace(' ', '_').replace('.', '').replace('(', '_').replace(')', '_')
+    cols = [clean(c) for c in df.columns]
+    # Renomear duplicadas
+    seen = {}
+    new_cols = []
+    for c in cols:
+        if c not in seen:
+            seen[c] = 0
+            new_cols.append(c)
+        else:
+            seen[c] += 1
+            new_cols.append(f"{c}_{seen[c]}")
+    df.columns = new_cols
     # Mapeamento para garantir compatibilidade com o banco
     col_map = {
         'data_competencia': 'data_competencia',
-        'data_competencia_': 'data_competencia',
         'data': 'data_competencia',
-        'n_venda': 'numero_venda',
-        'numero_venda': 'numero_venda',
+        'no_venda': 'numero_venda',
         'parceiro': 'parceiro',
         'valor': 'valor',
-        'total': 'valor',
+        'quantidade': 'quantidade',
+        'vendedor': 'vendedor',
+        'codigo': 'codigo',
+        'operacao': 'operacao',
+        'tipo_da_condicao': 'tipo_da_condicao',
+        'transportadora': 'transportadora',
+        'cidade_entrega': 'cidade_entrega',
+        'uf_entrega': 'uf_entrega',
+        'filial': 'filial',
+        # ... adicione outros conforme necessário ...
     }
     df = df.rename(columns={c: col_map.get(c, c) for c in df.columns})
     return df
