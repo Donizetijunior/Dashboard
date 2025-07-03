@@ -21,7 +21,14 @@ def login_block():
         if authenticate(username, password):
             st.session_state.logado = True
             st.session_state.usuario = username
-            st.experimental_rerun()
+            # Usar st.rerun() se disponível, senão fallback para st.experimental_rerun()
+            try:
+                st.rerun()
+            except AttributeError:
+                try:
+                    st.experimental_rerun()
+                except AttributeError:
+                    pass
         else:
             st.error("Usuário ou senha inválidos.")
 
