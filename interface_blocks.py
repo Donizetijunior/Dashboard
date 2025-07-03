@@ -221,7 +221,7 @@ def dashboard_diario(perfil):
         st.markdown("<b>Filtros</b>", unsafe_allow_html=True)
         anos = pd.to_datetime(df['data_competencia'], errors='coerce').dt.year.dropna().unique()
         ano_sel = st.selectbox("Ano", sorted(anos, reverse=True))
-        meses = pd.to_datetime(df['data_competencia'], errors='coerce').dt.month_name(locale='pt_BR').unique()
+        meses = pd.to_datetime(df['data_competencia'], errors='coerce').dt.month_name().unique()
         mes_sel = st.selectbox("Mês", meses)
         vendedores = df['vendedor'].dropna().unique() if 'vendedor' in df.columns else []
         vendedor_sel = st.multiselect("Vendedor", vendedores)
@@ -233,7 +233,7 @@ def dashboard_diario(perfil):
     # Aplicar filtros
     df['data_competencia'] = pd.to_datetime(df['data_competencia'], errors='coerce')
     df = df[df['data_competencia'].dt.year == ano_sel]
-    df = df[df['data_competencia'].dt.month_name(locale='pt_BR') == mes_sel]
+    df = df[df['data_competencia'].dt.month_name() == mes_sel]
     if vendedor_sel:
         df = df[df['vendedor'].isin(vendedor_sel)]
     if cliente_sel:
