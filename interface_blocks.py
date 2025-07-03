@@ -129,40 +129,78 @@ def padronizar_colunas(df):
             seen[c] += 1
             new_cols.append(f"{c}_{seen[c]}")
     df.columns = new_cols
-    # Mapeamento para garantir compatibilidade com o banco
+    # Mapeamento completo para todos os campos do CSV
     col_map = {
         'data_competencia': 'data_competencia',
-        'data': 'data_competencia',
+        'hora': 'hora',
         'no_venda': 'numero_venda',
-        'parceiro': 'parceiro',
-        'cliente': 'parceiro',
-        'nome_cliente': 'parceiro',
-        'valor': 'valor',
-        'quantidade': 'quantidade',
-        'vendedor': 'vendedor',
-        'nome_vendedor': 'vendedor',
-        # Produto: usar a primeira ocorrência de 'codigo' como 'codigo_produto'
+        'no_nf': 'numero_nf',
         'codigo': 'codigo_produto',
         'codigo_1': 'codigo_aux1',
         'codigo_2': 'codigo_aux2',
-        'cod_produto': 'codigo_produto',
-        'produto': 'codigo_produto',
+        'parceiro': 'parceiro',
+        'quantidade': 'quantidade',
+        'qtd': 'quantidade',
+        'acrescimo': 'acrescimo',
+        'desconto': 'desconto',
+        'total': 'total',
+        'desp_acess': 'desp_acess',
+        'valor_frete_cif': 'valor_frete_cif',
+        'valor_seguro': 'valor_seguro',
+        'valor_seguro_1': 'valor_seguro_1',
+        'total_venda': 'total_venda',
+        'percentual_desc': 'percentual_desc',
+        'total_preco_base': 'total_preco_base',
         'operacao': 'operacao',
-        # Condição de pagamento
+        'n_d': 'n_d',
+        'n_e': 'n_e',
+        'c': 'c',
+        'no_c_fiscal': 'numero_c_fiscal',
+        'no_vendedor': 'numero_vendedor',
+        'vendedor': 'vendedor',
         'tipo_da_condicao': 'tipo_da_condicao',
         'tipodacondicao': 'tipo_da_condicao',
         'tipo_condicao': 'tipo_da_condicao',
         'tipo_da_condicao_1': 'tipo_da_condicao',
+        'data_saida': 'data_saida',
         'forma': 'forma_pagamento',
-        # ... outros mapeamentos ...
         'transportadora': 'transportadora',
+        'tipo_frete': 'tipo_frete',
+        'valor_frete': 'valor_frete',
+        'placa': 'placa',
+        'uf_placa': 'uf_placa',
+        'especie': 'especie',
+        'marca': 'marca',
+        'quantidade_volume': 'quantidade_volume',
+        'peso_bruto': 'peso_bruto',
+        'peso_liquido': 'peso_liquido',
+        'obs': 'obs',
+        'no_loja_cf': 'numero_loja_cf',
+        'no_cx_cf': 'numero_cx_cf',
+        'no_serie_imp_cf': 'numero_serie_imp_cf',
+        'endereco_entrega': 'endereco_entrega',
+        'bairro_entrega': 'bairro_entrega',
         'cidade_entrega': 'cidade_entrega',
+        'cep_entrega': 'cep_entrega',
         'uf_entrega': 'uf_entrega',
         'filial': 'filial',
+        'operador': 'operador',
+        'operador_cancelamento': 'operador_cancelamento',
+        'cod': 'cod',
+        'nome_motorista': 'nome_motorista',
+        'operador_entrega': 'operador_entrega',
+        'data_entrega': 'data_entrega',
+        'nome_autorizado': 'nome_autorizado',
+        'sit_email': 'sit_email',
+        'n_pedido': 'numero_pedido',
+        'obra': 'obra',
+        'desc_obra': 'desc_obra',
+        'no_despacho': 'numero_despacho',
+        # Adicione outros campos conforme necessário
     }
     df = df.rename(columns={c: col_map.get(c, c) for c in df.columns})
-    # Garante que as colunas de filtro existam, mesmo que vazias
-    for col in ['vendedor', 'parceiro', 'codigo_produto', 'tipo_da_condicao', 'forma_pagamento']:
+    # Garante que todas as colunas do mapeamento existam, mesmo que vazias
+    for col in col_map.values():
         if col not in df.columns:
             df[col] = ''
     return df
