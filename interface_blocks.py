@@ -305,6 +305,8 @@ def dashboard_diario(perfil):
         st.warning("Nenhum dado disponível. Faça upload de um CSV.")
         return
     df = padronizar_colunas(df)
+    # Garantir que data_competencia é datetime antes de usar .dt
+    df['data_competencia'] = pd.to_datetime(df['data_competencia'], errors='coerce')
 
     # KPIs em cards
     kpi1, kpi2, kpi3 = st.columns(3)
@@ -342,6 +344,8 @@ def dashboard_diario(perfil):
     colg1, colg2 = st.columns(2)
     with colg1:
         st.markdown("<div class='card-section'><div class='section-title'>Faturamento Mensal x Meta</div>", unsafe_allow_html=True)
+        # Garantir datetime antes de usar .dt
+        df['data_competencia'] = pd.to_datetime(df['data_competencia'], errors='coerce')
         df['mes'] = df['data_competencia'].dt.strftime('%b')
         fat_mes = df.groupby('mes')['valor'].sum().reindex(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']).fillna(0)
         meta = [faturamento_total/len(fat_mes)]*len(fat_mes) if len(fat_mes) > 0 else []
@@ -381,6 +385,8 @@ def dashboard_diario(perfil):
         st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='card-section'><div class='section-title'>Faturamento Mensal</div>", unsafe_allow_html=True)
+    # Garantir datetime antes de usar .dt
+    df['data_competencia'] = pd.to_datetime(df['data_competencia'], errors='coerce')
     fat_mensal = df.groupby(df['data_competencia'].dt.month)['valor'].sum()
     if not fat_mensal.empty:
         st.line_chart(fat_mensal, use_container_width=True)
