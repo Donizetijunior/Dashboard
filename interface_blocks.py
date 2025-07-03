@@ -157,7 +157,7 @@ def sidebar_customizada(perfil):
     .sidebar-section { margin-bottom: 18px; }
     </style>
     """, unsafe_allow_html=True)
-    st.sidebar.success(f"<b>👤 Logado como:</b> <span style='color:#fff'>{st.session_state.usuario}</span>", icon="✅")
+    st.sidebar.markdown(f"<div style='background:#198754;padding:10px;border-radius:8px;color:#fff;font-weight:bold;'>✅ <b>👤 Logado como:</b> {st.session_state.usuario}</div>", unsafe_allow_html=True)
     st.sidebar.divider()
     st.sidebar.markdown('<div class="sidebar-title">📊 Dashboards</div>', unsafe_allow_html=True)
     dashboards = [
