@@ -313,8 +313,13 @@ def dashboard_diario(perfil):
     # Gráfico: Vendas por produto (pizza)
     if 'codigo_produto' in df.columns:
         st.markdown("<h4>Vendas de Produtos</h4>", unsafe_allow_html=True)
-        prod_pizza = df.groupby('codigo_produto')[pd.to_numeric(df['quantidade'], errors='coerce').fillna(0).name].sum().sort_values(ascending=False)
-        st.pyplot(plt.pie(prod_pizza, labels=prod_pizza.index, autopct='%1.0f%%')[0].figure)
+        df['quantidade_num'] = pd.to_numeric(df['quantidade'], errors='coerce').fillna(0)
+        prod_pizza = df.groupby('codigo_produto')['quantidade_num'].sum()
+        prod_pizza = prod_pizza[prod_pizza > 0]
+        if not prod_pizza.empty:
+            st.pyplot(plt.pie(prod_pizza, labels=prod_pizza.index, autopct='%1.0f%%')[0].figure)
+        else:
+            st.info('Nenhum dado de produto para exibir.')
 
     # Gráfico: Vendas por cliente (barra horizontal)
     st.markdown("<h4>Vendas por clientes</h4>", unsafe_allow_html=True)
