@@ -246,8 +246,48 @@ def sidebar_customizada(perfil):
 
 def dashboard_diario(perfil):
     st.markdown("""
-    <h1 style='text-align: left; margin-bottom: 0;'>📊 DASHBOARD DE VENDAS</h1>
-    <p style='text-align: left; color: #888; margin-top: 0;'>Acompanhe as vendas do dia de forma visual e interativa</p>
+    <style>
+    .kpi-card {
+        background: #23272f;
+        border-radius: 12px;
+        padding: 24px 16px 16px 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 8px #0002;
+        text-align: center;
+        color: #fff;
+    }
+    .kpi-title {
+        font-size: 16px;
+        color: #b0b8c1;
+        margin-bottom: 4px;
+    }
+    .kpi-value {
+        font-size: 2.2rem;
+        font-weight: bold;
+        margin-bottom: 0;
+    }
+    .kpi-icon {
+        font-size: 2rem;
+        margin-bottom: 4px;
+        display: block;
+    }
+    .card-section {
+        background: #23272f;
+        border-radius: 12px;
+        padding: 18px 18px 10px 18px;
+        margin-bottom: 18px;
+        box-shadow: 0 2px 8px #0002;
+        color: #fff;
+    }
+    .section-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #f8f9fa;
+    }
+    </style>
+    <h1 style='text-align: left; margin-bottom: 0; color:#fff;'>📊 DASHBOARD DE VENDAS</h1>
+    <p style='text-align: left; color: #b0b8c1; margin-top: 0;'>Acompanhe as vendas do dia de forma visual e interativa</p>
     """, unsafe_allow_html=True)
     st.divider()
 
@@ -266,49 +306,50 @@ def dashboard_diario(perfil):
         return
     df = padronizar_colunas(df)
 
-    # Filtros laterais
-    with st.sidebar:
-        st.markdown("<b>Filtros</b>", unsafe_allow_html=True)
-        anos = pd.to_datetime(df['data_competencia'], errors='coerce').dt.year.dropna().unique()
-        ano_sel = st.selectbox("Ano", sorted(anos, reverse=True))
-        meses = pd.to_datetime(df['data_competencia'], errors='coerce').dt.month_name().unique()
-        mes_sel = st.selectbox("Mês", meses)
-        vendedores = df['vendedor'].dropna().unique() if 'vendedor' in df.columns else []
-        vendedor_sel = st.multiselect("Vendedor", vendedores)
-        clientes = df['parceiro'].dropna().unique()
-        cliente_sel = st.multiselect("Cliente", clientes)
-        produtos = df['codigo_produto'].dropna().unique() if 'codigo_produto' in df.columns else []
-        produto_sel = st.multiselect("Produto", produtos)
-
-    # Aplicar filtros
-    df['data_competencia'] = pd.to_datetime(df['data_competencia'], errors='coerce')
-    df = df[df['data_competencia'].dt.year == ano_sel]
-    df = df[df['data_competencia'].dt.month_name() == mes_sel]
-    if vendedor_sel:
-        df = df[df['vendedor'].isin(vendedor_sel)]
-    if cliente_sel:
-        df = df[df['parceiro'].isin(cliente_sel)]
-    if produto_sel:
-        df = df[df['codigo_produto'].isin(produto_sel)]
-
-    # KPIs
-    col_kpi1, col_kpi2 = st.columns(2)
+    # KPIs em cards
+    kpi1, kpi2, kpi3 = st.columns(3)
     faturamento_total = pd.to_numeric(df['valor'], errors='coerce').fillna(0).sum() if 'valor' in df.columns else 0
     qtd_produtos = pd.to_numeric(df['quantidade'], errors='coerce').fillna(0).sum() if 'quantidade' in df.columns else 0
-    col_kpi1.metric("Faturamento Total", f"R$ {faturamento_total:,.2f}")
-    col_kpi2.metric("QTD Produtos Vendidos", f"{int(qtd_produtos)}")
+    ticket_medio = faturamento_total / max(df['numero_venda'].nunique(), 1)
+    with kpi1:
+        st.markdown(f"""
+        <div class='kpi-card'>
+            <span class='kpi-icon'>💰</span>
+            <div class='kpi-title'>Faturamento Total</div>
+            <div class='kpi-value'>R$ {faturamento_total:,.2f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with kpi2:
+        st.markdown(f"""
+        <div class='kpi-card'>
+            <span class='kpi-icon'>📦</span>
+            <div class='kpi-title'>Produtos Vendidos</div>
+            <div class='kpi-value'>{int(qtd_produtos)}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with kpi3:
+        st.markdown(f"""
+        <div class='kpi-card'>
+            <span class='kpi-icon'>🧾</span>
+            <div class='kpi-title'>Ticket Médio</div>
+            <div class='kpi-value'>R$ {ticket_medio:,.2f}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    # Gráfico: Faturamento mensal x Meta
-    st.markdown("<h4>Faturamento mensal x Meta</h4>", unsafe_allow_html=True)
-    df['mes'] = df['data_competencia'].dt.strftime('%b')
-    fat_mes = df.groupby('mes')['valor'].sum().reindex(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']).fillna(0)
-    meta = [faturamento_total/len(fat_mes)]*len(fat_mes) if len(fat_mes) > 0 else []
-    chart_fat = pd.DataFrame({'Faturamento': fat_mes, 'Meta': meta})
-    st.bar_chart(chart_fat)
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    # Gráfico: Vendas por produto (pizza)
-    if 'codigo_produto' in df.columns:
-        st.markdown("<h4>Vendas de Produtos</h4>", unsafe_allow_html=True)
+    # Gráficos em cards
+    colg1, colg2 = st.columns(2)
+    with colg1:
+        st.markdown("<div class='card-section'><div class='section-title'>Faturamento Mensal x Meta</div>", unsafe_allow_html=True)
+        df['mes'] = df['data_competencia'].dt.strftime('%b')
+        fat_mes = df.groupby('mes')['valor'].sum().reindex(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']).fillna(0)
+        meta = [faturamento_total/len(fat_mes)]*len(fat_mes) if len(fat_mes) > 0 else []
+        chart_fat = pd.DataFrame({'Faturamento': fat_mes, 'Meta': meta})
+        st.bar_chart(chart_fat, use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+    with colg2:
+        st.markdown("<div class='card-section'><div class='section-title'>Vendas de Produtos</div>", unsafe_allow_html=True)
         df['quantidade_num'] = pd.to_numeric(df['quantidade'], errors='coerce').fillna(0)
         prod_pizza = df.groupby('codigo_produto')['quantidade_num'].sum()
         prod_pizza = prod_pizza[prod_pizza > 0]
@@ -316,76 +357,40 @@ def dashboard_diario(perfil):
             st.pyplot(plt.pie(prod_pizza, labels=prod_pizza.index, autopct='%1.0f%%')[0].figure)
         else:
             st.info('Nenhum dado de produto para exibir.')
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # Gráfico: Vendas por cliente (barra horizontal)
-    st.markdown("<h4>Vendas por clientes</h4>", unsafe_allow_html=True)
-    top_clientes = df.groupby('parceiro')['valor'].sum().sort_values(ascending=False).head(10)
-    st.bar_chart(top_clientes)
+    colg3, colg4 = st.columns(2)
+    with colg3:
+        st.markdown("<div class='card-section'><div class='section-title'>Vendas por Clientes</div>", unsafe_allow_html=True)
+        top_clientes = df.groupby('parceiro')['valor'].sum().sort_values(ascending=False).head(10)
+        if not top_clientes.empty:
+            st.bar_chart(top_clientes, use_container_width=True)
+        else:
+            st.info('Nenhum dado de cliente para exibir.')
+        st.markdown("</div>", unsafe_allow_html=True)
+    with colg4:
+        st.markdown("<div class='card-section'><div class='section-title'>Faturamento por Vendedor</div>", unsafe_allow_html=True)
+        if 'vendedor' in df.columns:
+            fat_vend = df.groupby('vendedor')['valor'].sum().sort_values(ascending=False)
+            if not fat_vend.empty:
+                st.bar_chart(fat_vend, use_container_width=True)
+            else:
+                st.info('Nenhum dado de vendedor para exibir.')
+        else:
+            st.info('Nenhum dado de vendedor para exibir.')
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # Gráfico: Faturamento por vendedor (barra horizontal)
-    if 'vendedor' in df.columns:
-        st.markdown("<h4>Faturamento por Vendedor</h4>", unsafe_allow_html=True)
-        fat_vend = df.groupby('vendedor')['valor'].sum().sort_values(ascending=False)
-        st.bar_chart(fat_vend)
-
-    # Gráfico: Faturamento mensal (linha)
-    st.markdown("<h4>Faturamento mensal</h4>", unsafe_allow_html=True)
+    st.markdown("<div class='card-section'><div class='section-title'>Faturamento Mensal</div>", unsafe_allow_html=True)
     fat_mensal = df.groupby(df['data_competencia'].dt.month)['valor'].sum()
-    st.line_chart(fat_mensal)
-
-    st.divider()
-
-    # KPIs em cards
-    st.markdown("<h4 style='margin-bottom:0;'>📌 Indicadores</h4>", unsafe_allow_html=True)
-    kpi1, kpi2, kpi3 = st.columns(3)
-    kpi1.metric("Total de Vendas", f"{df['numero_venda'].nunique()}", help="Quantidade de vendas únicas no período filtrado.")
-    kpi2.metric("Clientes Únicos", f"{df['parceiro'].nunique()}", help="Quantidade de clientes diferentes.")
-    ticket_medio = pd.to_numeric(df['valor'], errors='coerce').fillna(0).sum() / max(df['numero_venda'].nunique(), 1)
-    kpi3.metric("Ticket Médio", f"R$ {ticket_medio:,.2f}", help="Valor médio por venda.")
-    kpi4, kpi5, kpi6 = st.columns(3)
-    total_vendido = pd.to_numeric(df['valor'], errors='coerce').fillna(0).sum()
-    total_desconto = pd.to_numeric(df['desconto'], errors='coerce').fillna(0).astype(str).str.replace(',', '.').astype(float).sum() if 'desconto' in df.columns else 0
-    total_acrescimo = pd.to_numeric(df['acrescimo'], errors='coerce').fillna(0).astype(str).str.replace(',', '.').astype(float).sum() if 'acrescimo' in df.columns else 0
-    kpi4.metric("Total Vendido", f"R$ {total_vendido:,.2f}")
-    kpi5.metric("Total Desconto", f"R$ {total_desconto:,.2f}")
-    kpi6.metric("Total Acréscimo", f"R$ {total_acrescimo:,.2f}")
-    st.write("")
-
-    st.divider()
-
-    # Gráfico: Top Clientes
-    st.markdown("<h4>👥 Top 10 Clientes</h4>", unsafe_allow_html=True)
-    top_clientes = df.groupby('parceiro')['valor'].sum().sort_values(ascending=False).head(10).reset_index()
-    if not top_clientes.empty:
-        chart = alt.Chart(top_clientes).mark_bar().encode(
-            x=alt.X('valor:Q', title='Valor Total'),
-            y=alt.Y('parceiro:N', sort='-x', title='Cliente'),
-            color=alt.value('#4F8DFD')
-        ).properties(height=350)
-        st.altair_chart(chart, use_container_width=True)
+    if not fat_mensal.empty:
+        st.line_chart(fat_mensal, use_container_width=True)
     else:
-        st.info("Não há dados suficientes para exibir o gráfico de Top Clientes.")
+        st.info('Nenhum dado mensal para exibir.')
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    st.divider()
-
-    # Gráfico: Evolução temporal
-    st.markdown("<h4>📈 Vendas ao Longo do Tempo</h4>", unsafe_allow_html=True)
-    vendas_tempo = df.groupby('data_competencia')['valor'].sum().reset_index()
-    if not vendas_tempo.empty:
-        chart2 = alt.Chart(vendas_tempo).mark_line(point=True).encode(
-            x=alt.X('data_competencia:T', title='Data'),
-            y=alt.Y('valor:Q', title='Valor Total'),
-            tooltip=['data_competencia', 'valor']
-        ).properties(height=350)
-        st.altair_chart(chart2, use_container_width=True)
-    else:
-        st.info("Não há dados suficientes para exibir o gráfico de evolução temporal.")
-
-    st.divider()
-
-    # Tabela de dados filtrados
-    st.markdown("<h4>📄 Tabela de Vendas Filtradas</h4>", unsafe_allow_html=True)
-    st.dataframe(df, use_container_width=True, height=350)
+    st.markdown("<div class='card-section'><div class='section-title'>Tabela de Vendas</div>", unsafe_allow_html=True)
+    st.dataframe(df[['data_competencia','numero_venda','parceiro','valor','quantidade','vendedor','tipo_da_condicao','forma_pagamento','cidade_entrega','filial']].head(30), use_container_width=True, height=350)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     # Botão para gerar PDF
     if st.button("⬇️ Baixar Relatório em PDF"):
@@ -393,9 +398,9 @@ def dashboard_diario(perfil):
             'total_vendas': df['numero_venda'].nunique(),
             'clientes_unicos': df['parceiro'].nunique(),
             'ticket_medio': ticket_medio,
-            'total_vendido': total_vendido
+            'total_vendido': faturamento_total
         }
-        pdf_bytes = gerar_pdf_dashboard_diario(df, kpis, chart, chart2)
+        pdf_bytes = gerar_pdf_dashboard_diario(df, kpis, chart_fat, fat_mensal)
         st.download_button("Download do PDF", pdf_bytes, file_name="relatorio_diario.pdf", mime="application/pdf")
 
     if perfil == "admin":
